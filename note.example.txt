@@ -1,0 +1,2 @@
+This is an example note file used by the editor.
+Your personal note content lives in note.txt (which is ignored by Git).

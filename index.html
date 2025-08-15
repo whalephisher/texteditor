@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live Text Editor</title>
+    <style>
+      :root {
+        --bg: #0f1115;
+        --panel: #171922;
+        --muted: #96a0b5;
+        --border: #2a2f3a;
+        --accent: #3ea6ff;
+        --accent-2: #8855ff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+          Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji",
+          "Segoe UI Emoji";
+        margin: 0;
+        background: var(--bg);
+        color: #e8eefc;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border);
+        background: #0c0e13;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+
+      .topbar h1 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #e6e6e6;
+      }
+
+      .controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      input[type="file"],
+      select,
+      button {
+        font-size: 14px;
+        background-color: #2d2d30;
+        color: white;
+        border: 1px solid #555;
+        padding: 5px 10px;
+        border-radius: 4px;
+      }
+
+      button:hover {
+        background-color: #3e3e42;
+      }
+
+      .container {
+        padding: 16px 20px;
+      }
+
+      #editor {
+        height: calc(100vh - 120px);
+        select,
+        input[type="file"] {
+          font-size: 14px;
+          background: #202433;
+          color: #dbe6ff;
+          border: 1px solid var(--border);
+          padding: 6px 10px;
+          border-radius: 8px;
+        }
+
+        button,
+        .btn {
+          background: linear-gradient(135deg, var(--accent), var(--accent-2));
+          color: white;
+          border: none;
+          border-radius: 8px;
+          padding: 10px 14px;
+          font-size: 14px;
+          cursor: pointer;
+          box-shadow: 0 4px 14px rgba(62, 166, 255, 0.25);
+        }
+        button:hover {
+          filter: brightness(1.05);
+        }
+        button:disabled {
+          opacity: 0.6;
+          cursor: default;
+        }
+        .secondary {
+          background: #202433;
+          color: #dbe6ff;
+          border: 1px solid var(--border);
+          box-shadow: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <h1>Live Text Editor</h1>
+      <div class="controls">
+        <select id="languageSelector">
+          border: 1px solid var(--border);
+          <option value="plaintext">Plain Text</option>
+          <option value="javascript">JavaScript</option>
+          <option value="html">HTML</option>
+          <option value="css">CSS</option>
+          <option value="json">JSON</option>
+          color: #80ff80;
+          <option value="typescript">TypeScript</option>
+          <option value="markdown">Markdown</option>
+        </select>
+        <label style="display: flex; align-items: center; gap: 6px">
+          <input type="checkbox" id="autoDetectToggle" checked /> Auto-detect
+        </label>
+        <a class="link-btn" href="/share" title="Open File Share">
+          <button class="secondary">Open File Share</button>
+        </a>
+      </div>
+    </div>
+
+    <div class="container">
+      <div id="editor"></div>
+      <div><span id="status"></span></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
+    <script>
+      let monacoEditor;
+      let lastSaved = "";
+      let currentFile = { name: "note.txt", content: "" };
+      let autoDetect = true;
+      let langDetectTimeout;
+
+      require.config({
+        paths: {
+          vs: "https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs",
+        },
+      });
+
+      require(["vs/editor/editor.main"], function () {
+        monacoEditor = monaco.editor.create(document.getElementById("editor"), {
+          value: "",
+          language: "javascript",
+          theme: "vs-dark",
+          fontSize: 16,
+          automaticLayout: true,
+          wordWrap: "on",
+        });
+
+        fetch("/load")
+          .then((res) => res.text())
+          .then((text) => {
+            monacoEditor.setValue(text);
+            lastSaved = text;
+            currentFile = { name: "note.txt", content: text };
+            if (autoDetect) applyDetectedLanguage(text);
+          });
+
+        monacoEditor.onDidChangeModelContent(() => {
+          const content = monacoEditor.getValue();
+          if (content !== lastSaved) {
+            lastSaved = content;
+            currentFile.content = content;
+            clearTimeout(window.saveTimeout);
+            window.saveTimeout = setTimeout(() => {
+              fetch("/save", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ content }),
+              })
+                .then((res) => res.text())
+                .then((msg) => {
+                  document.getElementById("status").textContent = msg;
+                  setTimeout(() => {
+                    document.getElementById("status").textContent = "";
+                  }, 1000);
+                });
+            }, 1000);
+          }
+
+          if (autoDetect) {
+            clearTimeout(langDetectTimeout);
+            langDetectTimeout = setTimeout(() => {
+              applyDetectedLanguage(content);
+            }, 300);
+          }
+        });
+
+        const wsProtocol = location.protocol === "https:" ? "wss" : "ws";
+        const wsHost = location.host || `${window.location.hostname}:3000`;
+        const socket = new WebSocket(`${wsProtocol}://${wsHost}`);
+        socket.onmessage = (event) => {
+          if (!monacoEditor.hasTextFocus()) {
+            monacoEditor.setValue(event.data);
+            lastSaved = event.data;
+            currentFile.content = event.data;
+            document.getElementById("status").textContent = "Updated remotely";
+            setTimeout(() => {
+              document.getElementById("status").textContent = "";
+            }, 1000);
+          }
+        };
+
+        document
+          .getElementById("autoDetectToggle")
+          .addEventListener("change", function () {
+            autoDetect = this.checked;
+            if (autoDetect) applyDetectedLanguage(monacoEditor.getValue());
+          });
+
+        document
+          .getElementById("languageSelector")
+          .addEventListener("change", function () {
+            const lang = this.value;
+            if (lang === "auto") {
+              autoDetect = true;
+              document.getElementById("autoDetectToggle").checked = true;
+              applyDetectedLanguage(monacoEditor.getValue());
+            } else {
+              autoDetect = false;
+              document.getElementById("autoDetectToggle").checked = false;
+              monaco.editor.setModelLanguage(monacoEditor.getModel(), lang);
+            }
+          });
+
+        function detectLanguageFromContent(content) {
+          if (/^\s*function\s+|=>\s+|const\s+|let\s+|var\s+/m.test(content)) {
+            return "javascript";
+          } else if (/^\s*def\s+|import\s+|print\(|:\s*$/m.test(content)) {
+            return "python";
+          } else if (
+            /<[a-z][\s\S]*?>/i.test(content) &&
+            /<\/[a-z]+>/i.test(content)
+          ) {
+            return "html";
+          } else if (
+            /{[\s\S]*?:[\s\S]*?}/.test(content) &&
+            /^[\[\{]/.test(content)
+          ) {
+            return "json";
+          } else if (/^\s*body\s*\{|\s*\.|\s*#/.test(content)) {
+            return "css";
+          } else if (/^#\s|\*\s|^\s*\d+\.\s/.test(content)) {
+            return "markdown";
+          } else {
+            return "plaintext";
+          }
+        }
+
+        function applyDetectedLanguage(content) {
+          const detectedLang = detectLanguageFromContent(content);
+          monaco.editor.setModelLanguage(monacoEditor.getModel(), detectedLang);
+          document.getElementById("languageSelector").value = "auto";
+        }
+
+        // File Share moved to a separate page (/share)
+      });
+    </script>
+  </body>
+</html>
