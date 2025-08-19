@@ -88,9 +88,8 @@ app.post('/files/upload', upload.array('files'), async (req, res) => {
     }
 });
 
-// Download a file
 // Download (support nested paths)
-app.get('/files/*', (req, res) => {
+app.get(/^\/files\/(.*)$/, (req, res) => {
     const rel = req.params[0] || '';
     const base = path.resolve(UPLOAD_DIR) + path.sep;
     const filepath = path.resolve(path.join(UPLOAD_DIR, rel));
@@ -101,9 +100,8 @@ app.get('/files/*', (req, res) => {
     });
 });
 
-// Delete a file
 // Delete (support nested paths)
-app.delete('/files/*', async (req, res) => {
+app.delete(/^\/files\/(.*)$/, async (req, res) => {
     try {
         const rel = req.params[0] || '';
         const base = path.resolve(UPLOAD_DIR) + path.sep;
