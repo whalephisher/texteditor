@@ -266,7 +266,8 @@
         function applyDetectedLanguage(content) {
           const detectedLang = detectLanguageFromContent(content);
           monaco.editor.setModelLanguage(monacoEditor.getModel(), detectedLang);
-          document.getElementById("languageSelector").value = "auto";
+          // Set dropdown to detected language (not 'auto')
+          document.getElementById("languageSelector").value = detectedLang;
         }
       });
     </script>
