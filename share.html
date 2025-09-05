@@ -212,17 +212,7 @@
       </section>
     </main>
 
-    <!-- Confirm Modal -->
-    <div id="confirmOverlay" class="modal-overlay">
-      <div class="modal">
-        <h3>Confirm delete</h3>
-        <p id="confirmMessage">Are you sure?</p>
-        <div class="modal-actions">
-          <button id="confirmCancel" class="secondary">Cancel</button>
-          <button id="confirmOk">Delete</button>
-        </div>
-      </div>
-    </div>
+
 
     <script>
       const picker = document.getElementById("picker");
@@ -230,40 +220,7 @@
       const refreshBtn = document.getElementById("refresh");
       const list = document.getElementById("list");
       const dropzone = document.getElementById("dropzone");
-      const overlay = document.getElementById("confirmOverlay");
-      const confirmMsg = document.getElementById("confirmMessage");
-      const confirmCancel = document.getElementById("confirmCancel");
-      const confirmOk = document.getElementById("confirmOk");
 
-      function confirmPopup(message) {
-        return new Promise((resolve) => {
-          confirmMsg.textContent = message;
-          overlay.classList.add("show");
-          const onCancel = () => {
-            cleanup();
-            resolve(false);
-          };
-          const onOk = () => {
-            cleanup();
-            resolve(true);
-          };
-          const onOverlay = (e) => {
-            if (e.target === overlay) {
-              cleanup();
-              resolve(false);
-            }
-          };
-          function cleanup() {
-            confirmCancel.removeEventListener("click", onCancel);
-            confirmOk.removeEventListener("click", onOk);
-            overlay.removeEventListener("click", onOverlay);
-            overlay.classList.remove("show");
-          }
-          confirmCancel.addEventListener("click", onCancel, { once: true });
-          confirmOk.addEventListener("click", onOk, { once: true });
-          overlay.addEventListener("click", onOverlay, { once: true });
-        });
-      }
 
       uploadBtn.addEventListener("click", () => picker.click());
 
@@ -426,6 +383,9 @@
             left.appendChild(name);
             left.appendChild(meta);
             const right = document.createElement("div");
+
+            // Inline delete confirmation state
+            let confirming = false;
             const link = document.createElement("a");
             link.href = `/files/${encodeURI(f.name)}`;
             link.className = "download";
@@ -439,17 +399,42 @@
             del.className = "secondary";
             del.style.marginLeft = "8px";
             del.textContent = "Delete";
-            del.addEventListener("click", async () => {
-              const ok = await confirmPopup(`Delete ${f.name}?`);
-              if (!ok) return;
-              try {
-                const res = await fetch(`/files/${encodeURI(f.name)}`, {
-                  method: "DELETE",
-                });
-                if (!res.ok) throw new Error("delete failed");
-                await refresh();
-              } catch (e) {
-                alert("Delete failed");
+
+            // Inline confirmation logic
+            del.addEventListener("click", async (e) => {
+              e.stopPropagation();
+              if (!confirming) {
+                confirming = true;
+                del.textContent = "Confirm delete?";
+                link.style.display = "none";
+                // Optional: revert if user clicks elsewhere or after timeout
+                const revert = () => {
+                  confirming = false;
+                  del.textContent = "Delete";
+                  link.style.display = "";
+                  document.removeEventListener("click", docHandler, true);
+                  clearTimeout(timeoutId);
+                };
+                const docHandler = (evt) => {
+                  if (!item.contains(evt.target)) revert();
+                };
+                document.addEventListener("click", docHandler, true);
+                const timeoutId = setTimeout(revert, 5000);
+                del._revert = revert;
+              } else {
+                // Confirmed, do delete
+                del.disabled = true;
+                try {
+                  const res = await fetch(`/files/${encodeURI(f.name)}`, {
+                    method: "DELETE",
+                  });
+                  if (!res.ok) throw new Error("delete failed");
+                  await refresh();
+                } catch (e) {
+                  alert("Delete failed");
+                  del.disabled = false;
+                  if (del._revert) del._revert();
+                }
               }
             });
             right.appendChild(del);
