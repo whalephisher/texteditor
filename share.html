@@ -6,7 +6,7 @@
     <title>File Share</title>
     <style>
       :root {
-        --bg: #0f1115;
+        --bg: #10131b;
         --panel: #171922;
         --muted: #96a0b5;
         --border: #2a2f3a;
@@ -34,11 +34,12 @@
         gap: 18px;
         padding: 14px 20px;
         border-bottom: 1px solid var(--border);
-        background: #141722;
+        background: var(--panel);
         position: sticky;
         top: 0;
         z-index: 10;
         transition: background 0.2s;
+        box-shadow: 0 2px 12px 0 #000a;
       }
       /* Slide transition for page navigation */
       .slide-left {
@@ -127,6 +128,7 @@
         border: 1px solid var(--border);
         border-radius: 12px;
         padding: 18px;
+        box-shadow: 0 2px 12px 0 #000a;
       }
       .grid {
         display: grid;

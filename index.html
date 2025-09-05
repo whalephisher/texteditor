@@ -6,7 +6,7 @@
     <title>Live Text Editor</title>
     <style>
       :root {
-        --bg: #0f1115;
+        --bg: #10131b;
         --panel: #171922;
         --muted: #96a0b5;
         --border: #2a2f3a;
@@ -35,11 +35,19 @@
         gap: 18px;
         padding: 14px 20px;
         border-bottom: 1px solid var(--border);
-        background: #141722;
+        background: var(--panel);
         position: sticky;
         top: 0;
         z-index: 10;
         transition: background 0.2s;
+        box-shadow: 0 2px 12px 0 #000a;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 18px;
+        box-shadow: 0 2px 12px 0 #000a;
       }
       /* Slide transition for page navigation */
       .slide-left {
@@ -93,44 +101,12 @@
 
       .container {
         padding: 16px 20px;
+        max-width: 900px;
+        margin: 24px auto;
       }
 
       #editor {
         height: calc(100vh - 120px);
-        select,
-        input[type="file"] {
-          font-size: 14px;
-          background: #202433;
-          color: #dbe6ff;
-          border: 1px solid var(--border);
-          padding: 6px 10px;
-          border-radius: 8px;
-        }
-
-        button,
-        .btn {
-          background: linear-gradient(135deg, var(--accent), var(--accent-2));
-          color: white;
-          border: none;
-          border-radius: 8px;
-          padding: 10px 14px;
-          font-size: 14px;
-          cursor: pointer;
-          box-shadow: 0 4px 14px rgba(62, 166, 255, 0.25);
-        }
-        button:hover {
-          filter: brightness(1.05);
-        }
-        button:disabled {
-          opacity: 0.6;
-          cursor: default;
-        }
-        .secondary {
-          background: #202433;
-          color: #dbe6ff;
-          border: 1px solid var(--border);
-          box-shadow: none;
-        }
       }
     </style>
   </head>
