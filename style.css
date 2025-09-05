@@ -2,10 +2,11 @@
     flex: 1;
     text-align: center;
     margin: 0;
-    font-size: 1.5em;
-    font-weight: 700;
+    font-size: 2.1rem;
+    font-weight: 800;
     letter-spacing: 0.01em;
     color: #e6e6e6;
+    line-height: 1.2;
 }
 /* Shared theme and layout for both pages */
 :root {
