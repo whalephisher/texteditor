@@ -63,8 +63,9 @@
         transition: background 0.2s, color 0.2s;
       }
       .danger {
-        background: linear-gradient(135deg, #ff3e3e, #ff7b55);
+        background: linear-gradient(135deg, #a33a3a, #6e2323);
         color: #fff;
+        border: 1px solid #a33a3a;
       }
       .cancel {
         background: #23242a;
@@ -428,6 +429,7 @@
                 confirming = true;
                 del.textContent = "Confirm delete?";
                 del.classList.add("danger");
+                del.classList.remove("secondary");
                 link.style.display = "none";
 
                 // Add cancel (X) button
@@ -441,6 +443,7 @@
                   confirming = false;
                   del.textContent = "Delete";
                   del.classList.remove("danger");
+                  del.classList.add("secondary");
                   link.style.display = "";
                   if (cancelBtn && cancelBtn.parentNode) cancelBtn.parentNode.removeChild(cancelBtn);
                   document.removeEventListener("click", docHandler, true);
@@ -454,7 +457,6 @@
                   if (!item.contains(evt.target)) revert();
                 };
                 document.addEventListener("click", docHandler, true);
-                const timeoutId = setTimeout(revert, 5000);
                 del._revert = revert;
               } else {
                 // Confirmed, do delete
