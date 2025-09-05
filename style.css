@@ -1,194 +1,272 @@
 /* Shared theme and layout for both pages */
 :root {
-  --bg: #10131b;
-  --panel: #171922;
-  --muted: #96a0b5;
-  --border: #2a2f3a;
-  --accent: #3ea6ff;
-  --accent-2: #8855ff;
+    --bg: #10131b;
+    --panel: #171922;
+    --muted: #96a0b5;
+    --border: #2a2f3a;
+    --accent: #3ea6ff;
+    --accent-2: #8855ff;
 }
+
 * {
-  box-sizing: border-box;
+    box-sizing: border-box;
 }
+
 body {
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
-    Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-  margin: 0;
-  background: var(--bg);
-  color: #e8eefc;
-  min-height: 100vh;
-  transition: background 0.2s;
-  overflow-x: hidden;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+        Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    margin: 0;
+    background: var(--bg);
+    color: #e8eefc;
+    min-height: 100vh;
+    transition: background 0.2s;
+    overflow-x: hidden;
 }
+
 .topbar {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  gap: 18px;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--border);
-  background: var(--panel);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  transition: background 0.2s;
-  box-shadow: 0 2px 12px 0 #000a;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 18px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    transition: background 0.2s;
+    box-shadow: 0 2px 12px 0 #000a;
 }
+
 .topbar h1 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #e6e6e6;
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #e6e6e6;
 }
+
 .controls {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
 }
+
 input[type="file"],
-select,
-button {
-  font-size: 14px;
-  background-color: #2d2d30;
-  color: white;
-  border: 1px solid #555;
-  padding: 5px 10px;
-  border-radius: 4px;
+select {
+    font-size: 14px;
+    background-color: #2d2d30;
+    color: white;
+    border: 1px solid #555;
+    padding: 5px 10px;
+    border-radius: 4px;
 }
-button:hover {
-  background-color: #3e3e42;
+
+button,
+.btn,
+.nav-btn {
+    font-size: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(62, 166, 255, 0.15);
+    transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+    outline: none;
 }
+button:hover,
+.btn:hover,
+.nav-btn:hover {
+    background: linear-gradient(135deg, var(--accent-2), var(--accent));
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(136, 85, 255, 0.18);
+    filter: brightness(1.08);
+}
+button:active,
+.btn:active,
+.nav-btn:active {
+    filter: brightness(0.95);
+}
+
 .panel {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 18px;
-  box-shadow: 0 2px 12px 0 #000a;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    box-shadow: 0 2px 12px 0 #000a;
 }
+
 /* Slide transition for page navigation */
 .slide-left {
-  animation: slideLeft 0.2s forwards;
+    animation: slideLeft 0.2s forwards;
 }
+
 .slide-right {
-  animation: slideRight 0.2s forwards;
+    animation: slideRight 0.2s forwards;
 }
+
 @keyframes slideLeft {
-  from { transform: translateX(0); opacity: 1; }
-  to { transform: translateX(-100vw); opacity: 0.7; }
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    to {
+        transform: translateX(-100vw);
+        opacity: 0.7;
+    }
 }
+
 @keyframes slideRight {
-  from { transform: translateX(0); opacity: 1; }
-  to { transform: translateX(100vw); opacity: 0.7; }
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    to {
+        transform: translateX(100vw);
+        opacity: 0.7;
+    }
 }
+
 body.fade-out {
-  opacity: 0;
-  transition: opacity 0.4s;
+    opacity: 0;
+    transition: opacity 0.4s;
 }
+
 /* Editor page only */
 .container {
-  padding: 16px 20px;
-  width: 100%;
-  margin: 0;
+    padding: 16px 20px;
+    width: 100%;
+    margin: 0;
 }
+
 #editor {
-  height: calc(100vh - 120px);
+    height: calc(100vh - 120px);
 }
+
 /* File share only */
 main {
-  max-width: 900px;
-  margin: 24px auto;
-  padding: 0 16px;
+    max-width: 900px;
+    margin: 24px auto;
+    padding: 0 16px;
 }
+
 .grid {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 10px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
 }
+
 .muted {
-  color: var(--muted);
-  font-size: 13px;
+    color: var(--muted);
+    font-size: 13px;
 }
+
 .file-list {
-  margin-top: 12px;
+    margin-top: 12px;
 }
+
 .dropzone {
-  margin-top: 12px;
-  padding: 40px;
-  border: 2px dashed var(--border);
-  border-radius: 12px;
-  color: var(--muted);
-  text-align: center;
-  background: #10131b;
-  min-height: 30vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  font-size: 16px;
+    margin-top: 12px;
+    padding: 40px;
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    color: var(--muted);
+    text-align: center;
+    background: #10131b;
+    min-height: 30vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    font-size: 16px;
 }
+
 .dropzone.hover {
-  border-color: var(--accent);
-  color: #dbe6ff;
-  background: #11172a;
+    border-color: var(--accent);
+    color: #dbe6ff;
+    background: #11172a;
 }
+
 .file-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 10px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  margin-bottom: 8px;
-  background: #141722;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    background: #141722;
 }
+
 .file-name {
-  font-weight: 500;
+    font-weight: 500;
 }
+
 .file-meta {
-  color: var(--muted);
-  font-size: 12px;
+    color: var(--muted);
+    font-size: 12px;
 }
+
 a.download {
-  text-decoration: none;
+    text-decoration: none;
 }
+
 .empty {
-  text-align: center;
-  padding: 28px;
-  color: var(--muted);
-  border: 1px dashed var(--border);
-  border-radius: 12px;
+    text-align: center;
+    padding: 28px;
+    color: var(--muted);
+    border: 1px dashed var(--border);
+    border-radius: 12px;
 }
+
 .back {
-  text-decoration: none;
+    text-decoration: none;
 }
+
 .danger {
-  background: linear-gradient(135deg, #a33a3a, #6e2323);
-  color: #fff;
-  border: 1px solid #a33a3a;
+    background: linear-gradient(135deg, #a33a3a, #6e2323);
+    color: #fff;
+    border: 1px solid #a33a3a;
 }
+
 .cancel {
-  background: #23242a;
-  color: #ff7b55;
-  border: 1px solid #ff7b55;
-  padding: 10px 14px;
-  margin-right: 6px;
-  font-weight: bold;
-  border-radius: 8px;
-  box-shadow: none;
-  transition: background 0.2s, color 0.2s;
+    background: #23242a;
+    color: #ff7b55;
+    border: 1px solid #ff7b55;
+    padding: 10px 14px;
+    margin-right: 6px;
+    font-weight: bold;
+    border-radius: 8px;
+    box-shadow: none;
+    transition: background 0.2s, color 0.2s;
 }
+
 .cancel:hover {
-  background: #2a2f3a;
-  color: #fff;
+    background: #2a2f3a;
+    color: #fff;
 }
+
 button:disabled {
-  opacity: 0.6;
-  cursor: default;
+    opacity: 0.6;
+    cursor: default;
 }
+
 .secondary {
-  background: #202433;
-  color: #dbe6ff;
-  border: 1px solid var(--border);
-  box-shadow: none;
+    background: #202433;
+    color: #dbe6ff;
+    border: 1px solid var(--border);
+    box-shadow: none;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 10px 18px;
+    transition: background 0.18s, color 0.18s;
+}
+.secondary:hover {
+    background: #23263a;
+    color: #fff;
 }
