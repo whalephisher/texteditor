@@ -1,3 +1,12 @@
+.page-title {
+    flex: 1;
+    text-align: center;
+    margin: 0;
+    font-size: 1.5em;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: #e6e6e6;
+}
 /* Shared theme and layout for both pages */
 :root {
     --bg: #10131b;
