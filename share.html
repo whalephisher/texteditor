@@ -7,23 +7,45 @@
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
-    <header class="topbar" style="display: flex; align-items: center; justify-content: space-between;">
-      <a class="back" href="/" id="toEditor" title="Back to Editor" style="margin-right: 12px;">
+    <header
+      class="topbar"
+      style="display: flex; align-items: center; justify-content: space-between"
+    >
+      <a
+        class="back"
+        href="/"
+        id="toEditor"
+        title="Back to Editor"
+        style="margin-right: 12px"
+      >
         <button class="nav-btn">← Editor</button>
       </a>
-      <h1 style="flex: 1; text-align: center; margin: 0; font-size: 1.5em; font-weight: 700; letter-spacing: 0.01em;">File Share</h1>
-      <div class="actions" style="margin-left: auto;">
+      <h1
+        style="
+          flex: 1;
+          text-align: center;
+          margin: 0;
+          font-size: 1.5em;
+          font-weight: 700;
+          letter-spacing: 0.01em;
+        "
+      >
+        File Share
+      </h1>
+      <div class="actions" style="margin-left: auto">
         <input id="picker" type="file" multiple style="display: none" />
       </div>
       <script>
         // Slide right on navigation to editor
-        document.getElementById("toEditor").addEventListener("click", function (e) {
-          e.preventDefault();
-          document.body.classList.add("slide-right");
-          setTimeout(() => {
-            window.location.href = this.href;
-          }, 200);
-        });
+        document
+          .getElementById("toEditor")
+          .addEventListener("click", function (e) {
+            e.preventDefault();
+            document.body.classList.add("slide-right");
+            setTimeout(() => {
+              window.location.href = this.href;
+            }, 200);
+          });
       </script>
     </header>
     <main>

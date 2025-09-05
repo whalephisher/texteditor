@@ -8,6 +8,7 @@
     color: #e6e6e6;
     line-height: 1.2;
 }
+
 /* Shared theme and layout for both pages */
 :root {
     --bg: #10131b;
@@ -87,6 +88,7 @@ button,
     transition: background 0.18s, color 0.18s, box-shadow 0.18s;
     outline: none;
 }
+
 button:hover,
 .btn:hover,
 .nav-btn:hover {
@@ -95,6 +97,7 @@ button:hover,
     box-shadow: 0 6px 18px rgba(136, 85, 255, 0.18);
     filter: brightness(1.08);
 }
+
 button:active,
 .btn:active,
 .nav-btn:active {
@@ -276,6 +279,7 @@ button:disabled {
     padding: 10px 18px;
     transition: background 0.18s, color 0.18s;
 }
+
 .secondary:hover {
     background: #23263a;
     color: #fff;
