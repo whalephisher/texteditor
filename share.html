@@ -4,230 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>File Share</title>
-    <style>
-      :root {
-        --bg: #10131b;
-        --panel: #171922;
-        --muted: #96a0b5;
-        --border: #2a2f3a;
-        --accent: #3ea6ff;
-        --accent-2: #8855ff;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        margin: 0;
-        background: var(--bg);
-        color: #e8eefc;
-        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
-          Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji",
-          "Segoe UI Emoji";
-        min-height: 100vh;
-        transition: background 0.2s;
-        overflow-x: hidden;
-      }
-      .topbar {
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        gap: 18px;
-        padding: 14px 20px;
-        border-bottom: 1px solid var(--border);
-        background: var(--panel);
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        transition: background 0.2s;
-        box-shadow: 0 2px 12px 0 #000a;
-      }
-      /* Slide transition for page navigation */
-      .slide-left {
-        animation: slideLeft 0.2s forwards;
-      }
-      .slide-right {
-        animation: slideRight 0.2s forwards;
-      }
-      @keyframes slideLeft {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(-100vw); opacity: 0.7; }
-      }
-      @keyframes slideRight {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(100vw); opacity: 0.7; }
-      }
-      /* Fade transition for page navigation */
-      body.fade-out {
-        opacity: 0;
-        transition: opacity 0.4s;
-      }
-      .title {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-      .title h1 {
-        margin: 0;
-        font-size: 18px;
-        font-weight: 600;
-      }
-      .actions {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-      }
-      button,
-      .btn {
-        background: linear-gradient(135deg, var(--accent), var(--accent-2));
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 10px 14px;
-        font-size: 14px;
-        cursor: pointer;
-        box-shadow: 0 4px 14px rgba(62, 166, 255, 0.25);
-        transition: background 0.2s, color 0.2s;
-      }
-      .danger {
-        background: linear-gradient(135deg, #a33a3a, #6e2323);
-        color: #fff;
-        border: 1px solid #a33a3a;
-      }
-      .cancel {
-        background: #23242a;
-        color: #ff7b55;
-        border: 1px solid #ff7b55;
-        padding: 10px 14px;
-        margin-right: 6px;
-        font-weight: bold;
-        border-radius: 8px;
-        box-shadow: none;
-        transition: background 0.2s, color 0.2s;
-      }
-      .cancel:hover {
-        background: #2a2f3a;
-        color: #fff;
-      }
-      button:disabled {
-        opacity: 0.6;
-        cursor: default;
-      }
-      .secondary {
-        background: #202433;
-        color: #dbe6ff;
-        border: 1px solid var(--border);
-        box-shadow: none;
-      }
-      main {
-        max-width: 900px;
-        margin: 24px auto;
-        padding: 0 16px;
-      }
-      .panel {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 18px;
-        box-shadow: 0 2px 12px 0 #000a;
-      }
-      .grid {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 10px;
-      }
-      .muted {
-        color: var(--muted);
-        font-size: 13px;
-      }
-      .file-list {
-        margin-top: 12px;
-      }
-      .dropzone {
-        margin-top: 12px;
-        padding: 40px;
-        border: 2px dashed var(--border);
-        border-radius: 12px;
-        color: var(--muted);
-        text-align: center;
-        background: #10131b;
-        min-height: 30vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-direction: column;
-        font-size: 16px;
-      }
-      .dropzone.hover {
-        border-color: var(--accent);
-        color: #dbe6ff;
-        background: #11172a;
-      }
-      .file-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 10px;
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        margin-bottom: 8px;
-        background: #141722;
-      }
-      .file-name {
-        font-weight: 500;
-      }
-      .file-meta {
-        color: var(--muted);
-        font-size: 12px;
-      }
-      a.download {
-        text-decoration: none;
-      }
-      .empty {
-        text-align: center;
-        padding: 28px;
-        color: var(--muted);
-        border: 1px dashed var(--border);
-        border-radius: 12px;
-      }
-      .back {
-        text-decoration: none;
-      }
-
-      /* Modal */
-      .modal-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.5);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 100;
-      }
-      .modal-overlay.show {
-        display: flex;
-      }
-      .modal {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 18px;
-        width: min(420px, calc(100vw - 40px));
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-      }
-      .modal h3 {
-        margin: 0 0 8px 0;
-        font-size: 16px;
-      }
-      .modal p {
-        margin: 0 0 16px 0;
-        color: var(--muted);
-      }
-      .modal-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 8px;
-      }
-    </style>
+  <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
     <header class="topbar">
@@ -235,16 +12,18 @@
         <a class="back" href="/" id="toEditor" title="Back to Editor">
           <button class="secondary">← Editor</button>
         </a>
-    <script>
-      // Slide right on navigation to editor
-      document.getElementById('toEditor').addEventListener('click', function(e) {
-        e.preventDefault();
-        document.body.classList.add('slide-right');
-        setTimeout(() => {
-          window.location.href = this.href;
-        }, 200);
-      });
-    </script>
+        <script>
+          // Slide right on navigation to editor
+          document
+            .getElementById("toEditor")
+            .addEventListener("click", function (e) {
+              e.preventDefault();
+              document.body.classList.add("slide-right");
+              setTimeout(() => {
+                window.location.href = this.href;
+              }, 200);
+            });
+        </script>
         <h1>File Share</h1>
       </div>
       <div class="actions">
@@ -270,15 +49,12 @@
       </section>
     </main>
 
-
-
     <script>
       const picker = document.getElementById("picker");
       const uploadBtn = document.getElementById("upload");
       const refreshBtn = document.getElementById("refresh");
       const list = document.getElementById("list");
       const dropzone = document.getElementById("dropzone");
-
 
       uploadBtn.addEventListener("click", () => picker.click());
 
@@ -482,14 +258,19 @@
                   del.classList.remove("danger");
                   del.classList.add("secondary");
                   link.style.display = "";
-                  if (cancelBtn && cancelBtn.parentNode) cancelBtn.parentNode.removeChild(cancelBtn);
+                  if (cancelBtn && cancelBtn.parentNode)
+                    cancelBtn.parentNode.removeChild(cancelBtn);
                   document.removeEventListener("click", docHandler, true);
                   clearTimeout(timeoutId);
                 };
-                cancelBtn.addEventListener("click", (evt) => {
-                  evt.stopPropagation();
-                  revert();
-                }, { once: true });
+                cancelBtn.addEventListener(
+                  "click",
+                  (evt) => {
+                    evt.stopPropagation();
+                    revert();
+                  },
+                  { once: true }
+                );
                 const docHandler = (evt) => {
                   if (!item.contains(evt.target)) revert();
                 };

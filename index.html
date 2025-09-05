@@ -4,119 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Live Text Editor</title>
-    <style>
-      :root {
-        --bg: #10131b;
-        --panel: #171922;
-        --muted: #96a0b5;
-        --border: #2a2f3a;
-        --accent: #3ea6ff;
-        --accent-2: #8855ff;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
-          Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji",
-          "Segoe UI Emoji";
-        margin: 0;
-        background: var(--bg);
-        color: #e8eefc;
-        min-height: 100vh;
-        transition: background 0.2s;
-        overflow-x: hidden;
-      }
-
-      .topbar {
-        display: flex;
-        justify-content: flex-start;
-        align-items: center;
-        gap: 18px;
-        padding: 14px 20px;
-        border-bottom: 1px solid var(--border);
-        background: var(--panel);
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        transition: background 0.2s;
-        box-shadow: 0 2px 12px 0 #000a;
-      }
-      .panel {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 18px;
-        box-shadow: 0 2px 12px 0 #000a;
-      }
-      /* Slide transition for page navigation */
-      .slide-left {
-        animation: slideLeft 0.2s forwards;
-      }
-      .slide-right {
-        animation: slideRight 0.2s forwards;
-      }
-      @keyframes slideLeft {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(-100vw); opacity: 0.7; }
-      }
-      @keyframes slideRight {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(100vw); opacity: 0.7; }
-      }
-      /* Fade transition for page navigation */
-      body.fade-out {
-        opacity: 0;
-        transition: opacity 0.4s;
-      }
-
-      .topbar h1 {
-        margin: 0;
-        font-size: 18px;
-        font-weight: 600;
-        color: #e6e6e6;
-      }
-
-      .controls {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-      }
-
-      input[type="file"],
-      select,
-      button {
-        font-size: 14px;
-        background-color: #2d2d30;
-        color: white;
-        border: 1px solid #555;
-        padding: 5px 10px;
-        border-radius: 4px;
-      }
-
-      button:hover {
-        background-color: #3e3e42;
-      }
-
-      .container {
-        padding: 16px 20px;
-        width: 100%;
-        margin: 0;
-      }
-
-      #editor {
-        height: calc(100vh - 120px);
-      }
-    </style>
+  <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
     <div class="topbar">
       <a class="link-btn" href="/share" id="toShare" title="Open File Share">
         <button class="secondary">File Share →</button>
       </a>
-      <h1 style="margin: 0 0 0 8px;">Live Text Editor</h1>
-      <div class="controls" style="margin-left: auto;">
+      <h1 style="margin: 0 0 0 8px">Live Text Editor</h1>
+      <div class="controls" style="margin-left: auto">
         <select id="languageSelector">
           <option value="plaintext">Plain Text</option>
           <option value="javascript">JavaScript</option>
@@ -133,13 +29,15 @@
     </div>
     <script>
       // Slide left on navigation to share
-      document.getElementById('toShare').addEventListener('click', function(e) {
-        e.preventDefault();
-        document.body.classList.add('slide-left');
-        setTimeout(() => {
-          window.location.href = this.href;
-        }, 200);
-      });
+      document
+        .getElementById("toShare")
+        .addEventListener("click", function (e) {
+          e.preventDefault();
+          document.body.classList.add("slide-left");
+          setTimeout(() => {
+            window.location.href = this.href;
+          }, 200);
+        });
     </script>
 
     <div class="container">
