@@ -60,6 +60,26 @@
         font-size: 14px;
         cursor: pointer;
         box-shadow: 0 4px 14px rgba(62, 166, 255, 0.25);
+        transition: background 0.2s, color 0.2s;
+      }
+      .danger {
+        background: linear-gradient(135deg, #ff3e3e, #ff7b55);
+        color: #fff;
+      }
+      .cancel {
+        background: #23242a;
+        color: #ff7b55;
+        border: 1px solid #ff7b55;
+        padding: 10px 14px;
+        margin-right: 6px;
+        font-weight: bold;
+        border-radius: 8px;
+        box-shadow: none;
+        transition: background 0.2s, color 0.2s;
+      }
+      .cancel:hover {
+        background: #2a2f3a;
+        color: #fff;
       }
       button:disabled {
         opacity: 0.6;
@@ -386,6 +406,7 @@
 
             // Inline delete confirmation state
             let confirming = false;
+            let cancelBtn = null;
             const link = document.createElement("a");
             link.href = `/files/${encodeURI(f.name)}`;
             link.className = "download";
@@ -406,15 +427,29 @@
               if (!confirming) {
                 confirming = true;
                 del.textContent = "Confirm delete?";
+                del.classList.add("danger");
                 link.style.display = "none";
-                // Optional: revert if user clicks elsewhere or after timeout
+
+                // Add cancel (X) button
+                cancelBtn = document.createElement("button");
+                cancelBtn.className = "cancel";
+                cancelBtn.innerHTML = "&#10005;"; // Unicode X
+                right.insertBefore(cancelBtn, del);
+
+                // Cancel logic
                 const revert = () => {
                   confirming = false;
                   del.textContent = "Delete";
+                  del.classList.remove("danger");
                   link.style.display = "";
+                  if (cancelBtn && cancelBtn.parentNode) cancelBtn.parentNode.removeChild(cancelBtn);
                   document.removeEventListener("click", docHandler, true);
                   clearTimeout(timeoutId);
                 };
+                cancelBtn.addEventListener("click", (evt) => {
+                  evt.stopPropagation();
+                  revert();
+                }, { once: true });
                 const docHandler = (evt) => {
                   if (!item.contains(evt.target)) revert();
                 };
@@ -424,6 +459,7 @@
               } else {
                 // Confirmed, do delete
                 del.disabled = true;
+                if (cancelBtn) cancelBtn.disabled = true;
                 try {
                   const res = await fetch(`/files/${encodeURI(f.name)}`, {
                     method: "DELETE",
@@ -433,6 +469,7 @@
                 } catch (e) {
                   alert("Delete failed");
                   del.disabled = false;
+                  if (cancelBtn) cancelBtn.disabled = false;
                   if (del._revert) del._revert();
                 }
               }
