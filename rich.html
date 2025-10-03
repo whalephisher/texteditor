@@ -15,12 +15,14 @@
   </style>
 </head>
 <body>
-  <div class="topbar" style="display:flex; align-items:center; gap:18px;">
-    <a href="/" class="back" id="toEditor"><button class="nav-btn">← Code</button></a>
+  <div class="topbar" style="display:flex; align-items:center; justify-content:space-between; gap:18px;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <a href="/" class="back" id="toEditor"><button class="nav-btn">← Code</button></a>
+      <a href="/share" class="back" id="toShare"><button class="nav-btn">File Share →</button></a>
+    </div>
     <h1 class="page-title">Rich Text</h1>
-    <div style="margin-left:auto; display:flex; gap:10px; align-items:center;">
-      <button id="saveBtn" class="secondary">Save</button>
-      <span id="richStatus" class="status"></span>
+    <div style="margin-left:auto; display:flex; gap:10px; align-items:center; min-width:140px; justify-content:flex-end;">
+      <span id="richStatus" class="status" style="text-align:right;"></span>
     </div>
   </div>
   <div class="rich-wrapper">
@@ -68,7 +70,6 @@
     // NOTE: For network peers without shared static hosting, we keep images as base64 embeds.
     // (Quill will include data:image/... URIs automatically for pasted images.)
 
-    const saveBtn = document.getElementById('saveBtn');
     const statusEl = document.getElementById('richStatus');
     let saveTimeout;
 
@@ -84,7 +85,17 @@
       saveTimeout = setTimeout(()=> save(quill.getContents()), 800);
     });
 
-    saveBtn.addEventListener('click', () => save(quill.getContents()));
+    // Navigation slide animations (reuse existing pattern)
+    document.getElementById('toEditor').addEventListener('click', function(e){
+      e.preventDefault();
+      document.body.classList.add('slide-right');
+      setTimeout(()=> window.location.href=this.href, 200);
+    });
+    document.getElementById('toShare').addEventListener('click', function(e){
+      e.preventDefault();
+      document.body.classList.add('slide-left');
+      setTimeout(()=> window.location.href=this.href, 200);
+    });
   </script>
 </body>
 </html>
