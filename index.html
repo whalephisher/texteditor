@@ -20,16 +20,28 @@
       >
         <button class="nav-btn">File Share →</button>
       </a>
+      <a class="link-btn" href="/rich" id="toRich" title="Open Rich Text" style="margin-right: 12px;">
+        <button class="nav-btn">Rich Text →</button>
+      </a>
       <h1 class="page-title">Live Text Editor</h1>
       <div class="controls" style="margin-left: auto">
         <select id="languageSelector">
           <option value="plaintext">Plain Text</option>
           <option value="javascript">JavaScript</option>
+          <option value="typescript">TypeScript</option>
+          <option value="python">Python</option>
+          <option value="c">C</option>
+          <option value="cpp">C++</option>
+          <option value="java">Java</option>
+          <option value="go">Go</option>
+          <option value="rust">Rust</option>
           <option value="html">HTML</option>
           <option value="css">CSS</option>
           <option value="json">JSON</option>
-          <option value="typescript">TypeScript</option>
           <option value="markdown">Markdown</option>
+          <option value="shell">Shell</option>
+          <option value="sql">SQL</option>
+          <option value="yaml">YAML</option>
         </select>
         <label style="display: flex; align-items: center; gap: 6px">
           <input type="checkbox" id="autoDetectToggle" checked /> Auto-detect
@@ -155,27 +167,23 @@
           });
 
         function detectLanguageFromContent(content) {
-          if (/^\s*function\s+|=>\s+|const\s+|let\s+|var\s+/m.test(content)) {
-            return "javascript";
-          } else if (/^\s*def\s+|import\s+|print\(|:\s*$/m.test(content)) {
-            return "python";
-          } else if (
-            /<[a-z][\s\S]*?>/i.test(content) &&
-            /<\/[a-z]+>/i.test(content)
-          ) {
-            return "html";
-          } else if (
-            /{[\s\S]*?:[\s\S]*?}/.test(content) &&
-            /^[\[\{]/.test(content)
-          ) {
-            return "json";
-          } else if (/^\s*body\s*\{|\s*\.|\s*#/.test(content)) {
-            return "css";
-          } else if (/^#\s|\*\s|^\s*\d+\.\s/.test(content)) {
-            return "markdown";
-          } else {
-            return "plaintext";
-          }
+          // Heuristics for several languages
+          if (/^\s*#include\s+<.*>|^\s*int\s+main\s*\(|^\s*printf\s*\(/m.test(content)) return 'c';
+          if (/^\s*#include\s+<.*>|std::|::std::|^\s*template\s*</m.test(content)) return 'cpp';
+            // Rust
+          if (/^\s*fn\s+main\s*\(|^\s*use\s+[a-zA-Z0-9_:]+;|Cargo\.toml/m.test(content)) return 'rust';
+          if (/^\s*package\s+|System\.out\.println|public\s+class\s+/m.test(content)) return 'java';
+          if (/^\s*package\s+main|fmt\.Print|go\s+mod\s+/m.test(content)) return 'go';
+          if (/^\s*SELECT\s+|^\s*INSERT\s+|^\s*UPDATE\s+|^\s*DELETE\s+/im.test(content)) return 'sql';
+          if (/^\s*---|: \w+\s*$/m.test(content) && /:\s*\w+/m.test(content)) return 'yaml';
+          if (/^#!\/bin\/(bash|sh)|^\s*echo\s+"|^\s*for\s+\w+\s+in/m.test(content)) return 'shell';
+          if (/^\s*def\s+|import\s+|print\(|:\s*$/m.test(content)) return 'python';
+          if (/^\s*function\s+|=>\s+|const\s+|let\s+|var\s+/m.test(content)) return 'javascript';
+          if (/<[a-z][\s\S]*?>/i.test(content) && /<\/[a-z]+>/i.test(content)) return 'html';
+          if (/{[\s\S]*?:[\s\S]*?}/.test(content) && /^[\[{]/.test(content)) return 'json';
+          if (/^\s*body\s*\{|\s*\.|\s*#/.test(content)) return 'css';
+          if (/^#\s|\*\s|^\s*\d+\.\s/.test(content)) return 'markdown';
+          return 'plaintext';
         }
 
         function applyDetectedLanguage(content) {

@@ -9,6 +9,7 @@ const multer = require('multer');
 const app = express();
 const PORT = 3000;
 const FILE_PATH = path.join(__dirname, 'note.txt');
+const RICH_PATH = path.join(__dirname, 'rich.json');
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 
 // Ensure upload directory exists
@@ -29,11 +30,37 @@ app.get('/share', (req, res) => {
     res.sendFile(path.join(__dirname, 'share.html'));
 });
 
+app.get('/rich', (req, res) => {
+    res.sendFile(path.join(__dirname, 'rich.html'));
+});
+
 app.get('/load', (req, res) => {
     fs.readFile(FILE_PATH, 'utf8', (err, data) => {
         if (err) return res.send('');
         res.send(data);
     });
+});
+
+// Load rich text delta (Quill)
+app.get('/rich-load', (req, res) => {
+    fs.readFile(RICH_PATH, 'utf8', (err, data) => {
+        if (err) return res.json({ ops: [] });
+        try {
+            const parsed = JSON.parse(data);
+            return res.json(parsed);
+        } catch {
+            return res.json({ ops: [] });
+        }
+    });
+});
+
+// Save rich text delta
+app.post('/rich-save', (req, res) => {
+    const delta = req.body && req.body.delta;
+    if (!delta || typeof delta !== 'object') return res.status(400).json({ ok: false, error: 'Invalid delta' });
+    fs.promises.writeFile(RICH_PATH, JSON.stringify(delta)).then(() => {
+        res.json({ ok: true });
+    }).catch(() => res.status(500).json({ ok: false }));
 });
 
 // Simple file sharing API (separate from editor)
