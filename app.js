@@ -18,8 +18,8 @@ fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 // Use memory storage so we can write files to nested paths using a provided relative path
 const upload = multer({ storage: multer.memoryStorage() });
 
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false, limit: '100mb' }));
+app.use(bodyParser.json({ limit: '100mb' }));
 app.use(express.static(__dirname));
 
 app.get('/', (req, res) => {
@@ -142,20 +142,22 @@ app.delete(/^\/files\/(.*)$/, async (req, res) => {
     }
 });
 
-const broadcast = (data) => {
+// Broadcast helper for all websocket clients (JSON messages only)
+function wsBroadcast(obj, except) {
+    const payload = JSON.stringify(obj);
     wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(data);
+        if (client !== except && client.readyState === WebSocket.OPEN) {
+            client.send(payload);
         }
     });
-};
+}
 
 app.post('/save', async (req, res) => {
     const content = req.body.content;
     try {
         await fs.promises.writeFile(FILE_PATH, content);
         res.send('Saved');
-        broadcast(content); // Immediately notify all clients
+        wsBroadcast({ type: 'code', content }); // Immediately notify all clients
     } catch (err) {
         res.status(500).send('Error saving file');
     }
@@ -167,15 +169,39 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 });
 
 const wss = new WebSocket.Server({ server });
+let latestRichDelta = null; // cached last delta for new rich clients (loaded separately via HTTP too)
 wss.on('connection', ws => {
-    console.log('Client connected');
+    ws.isAlive = true;
+    ws.on('pong', () => { ws.isAlive = true; });
+    ws.on('message', msg => {
+        let data;
+        try { data = JSON.parse(msg.toString()); } catch { return; }
+        if (!data || typeof data !== 'object') return;
+        switch (data.type) {
+            case 'rich-delta':
+                // forward delta to others
+                latestRichDelta = data.delta || latestRichDelta;
+                wsBroadcast({ type: 'rich-delta', delta: data.delta }, ws);
+                break;
+            default:
+                break;
+        }
+    });
 });
+
+// Heartbeat (optional resilience)
+setInterval(() => {
+    wss.clients.forEach(ws => {
+        if (!ws.isAlive) return ws.terminate();
+        ws.isAlive = false; ws.ping();
+    });
+}, 30000);
 
 // Watch for external file changes (like from editing outside app)
 chokidar.watch(FILE_PATH).on('change', () => {
     fs.readFile(FILE_PATH, 'utf8', (err, data) => {
         if (!err) {
-            broadcast(data);
+            wsBroadcast({ type: 'code', content: data });
         }
     });
 });

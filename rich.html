@@ -1,101 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Rich Editor</title>
-  <link rel="stylesheet" href="/style.css" />
-  <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet" />
-  <style>
-    .rich-wrapper { max-width: 1100px; margin: 24px auto; padding: 0 20px; }
-    #quill-editor { height: calc(100vh - 200px); background:#1a1d25; color:#e6e6e6; }
-    .ql-toolbar { background: var(--panel); border:1px solid var(--border); border-radius: 8px 8px 0 0; }
-    .ql-container { border:1px solid var(--border); border-radius: 0 0 8px 8px; }
-    .status { font-size:12px; color: var(--muted); margin-left:10px; }
-    .top-actions { display:flex; align-items:center; gap:12px; }
-  </style>
-</head>
-<body>
-  <div class="topbar" style="display:flex; align-items:center; justify-content:space-between; gap:18px;">
-    <div style="display:flex; align-items:center; gap:12px;">
-      <a href="/" class="back" id="toEditor"><button class="nav-btn">← Code</button></a>
-      <a href="/share" class="back" id="toShare"><button class="nav-btn">File Share →</button></a>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Rich Editor</title>
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/rich.css" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="topbar rich-topbar">
+      <div class="nav-left">
+        <a href="/" class="back" id="toEditor"
+          ><button class="nav-btn">← Code</button></a
+        >
+        <a href="/share" class="back" id="toShare"
+          ><button class="nav-btn">File Share →</button></a
+        >
+      </div>
+      <h1 class="page-title">Rich Text</h1>
+      <div class="nav-right">
+        <span id="richStatus" class="status"></span>
+      </div>
     </div>
-    <h1 class="page-title">Rich Text</h1>
-    <div style="margin-left:auto; display:flex; gap:10px; align-items:center; min-width:140px; justify-content:flex-end;">
-      <span id="richStatus" class="status" style="text-align:right;"></span>
+    <div class="rich-wrapper">
+      <div class="toolbar-shell">
+        <div id="quill-toolbar">
+          <span class="ql-formats">
+            <select class="ql-header"></select>
+            <button class="ql-bold"></button>
+            <button class="ql-italic"></button>
+            <button class="ql-underline"></button>
+            <button class="ql-strike"></button>
+          </span>
+          <span class="ql-formats">
+            <button class="ql-list" value="ordered"></button>
+            <button class="ql-list" value="bullet"></button>
+            <button class="ql-blockquote"></button>
+            <button class="ql-code-block"></button>
+          </span>
+          <span class="ql-formats">
+            <button class="ql-link"></button>
+            <button class="ql-image"></button>
+          </span>
+          <span class="ql-formats">
+            <select class="ql-color"></select>
+            <select class="ql-background"></select>
+          </span>
+          <span class="ql-formats">
+            <button class="ql-clean"></button>
+          </span>
+        </div>
+      </div>
+      <div id="quill-editor"></div>
     </div>
-  </div>
-  <div class="rich-wrapper">
-    <div id="quill-toolbar">
-      <span class="ql-formats">
-        <select class="ql-header"></select>
-        <button class="ql-bold"></button>
-        <button class="ql-italic"></button>
-        <button class="ql-underline"></button>
-        <button class="ql-strike"></button>
-      </span>
-      <span class="ql-formats">
-        <button class="ql-list" value="ordered"></button>
-        <button class="ql-list" value="bullet"></button>
-        <button class="ql-blockquote"></button>
-        <button class="ql-code-block"></button>
-      </span>
-      <span class="ql-formats">
-        <button class="ql-link"></button>
-        <button class="ql-image"></button>
-      </span>
-      <span class="ql-formats">
-        <select class="ql-color"></select>
-        <select class="ql-background"></select>
-      </span>
-      <span class="ql-formats">
-        <button class="ql-clean"></button>
-      </span>
-    </div>
-    <div id="quill-editor"></div>
-  </div>
-  <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
-  <script>
-    const quill = new Quill('#quill-editor', {
-      theme: 'snow',
-      modules: {
-        toolbar: '#quill-toolbar'
-      }
-    });
-
-    // Load existing delta
-    fetch('/rich-load').then(r=>r.json()).then(d => { try { quill.setContents(d); } catch(e) {} });
-
-    // Image paste handler (Quill already supports paste, but we intercept to convert to base64 -> keep inside doc)
-    // NOTE: For network peers without shared static hosting, we keep images as base64 embeds.
-    // (Quill will include data:image/... URIs automatically for pasted images.)
-
-    const statusEl = document.getElementById('richStatus');
-    let saveTimeout;
-
-    function save(delta){
-      fetch('/rich-save', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ delta })})
-        .then(r=>r.json())
-        .then(ok => { statusEl.textContent = ok.ok ? 'Saved' : 'Error'; setTimeout(()=> statusEl.textContent='', 1200); })
-        .catch(()=> { statusEl.textContent='Error'; setTimeout(()=> statusEl.textContent='', 1500); });
-    }
-
-    quill.on('text-change', () => {
-      clearTimeout(saveTimeout);
-      saveTimeout = setTimeout(()=> save(quill.getContents()), 800);
-    });
-
-    // Navigation slide animations (reuse existing pattern)
-    document.getElementById('toEditor').addEventListener('click', function(e){
-      e.preventDefault();
-      document.body.classList.add('slide-right');
-      setTimeout(()=> window.location.href=this.href, 200);
-    });
-    document.getElementById('toShare').addEventListener('click', function(e){
-      e.preventDefault();
-      document.body.classList.add('slide-left');
-      setTimeout(()=> window.location.href=this.href, 200);
-    });
-  </script>
-</body>
+    <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+    <script src="/rich.js"></script>
+  </body>
 </html>

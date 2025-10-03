@@ -1,0 +1,184 @@
+/* Rich text editor specific styles */
+body {
+    overflow: hidden !important;
+}
+
+.rich-wrapper {
+    width: 100%;
+    height: calc(100vh - 120px);
+    /* Match Monaco editor height exactly */
+    padding: 16px 20px;
+    /* Match Monaco container padding */
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Topbar layout classes */
+.rich-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.nav-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.nav-right {
+    margin-left: auto;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    min-width: 140px;
+    justify-content: flex-end;
+}
+
+.toolbar-shell {
+    background: var(--panel) !important;
+    border: 1px solid var(--border);
+    border-radius: 8px 8px 0 0;
+    padding: 8px 12px;
+    flex-shrink: 0;
+    margin-bottom: 0;
+}
+
+#quill-toolbar {
+    background: transparent !important;
+    border: none !important;
+    padding: 0;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* Override all Quill snow theme borders and white backgrounds */
+.ql-toolbar.ql-snow,
+.ql-container.ql-snow,
+.ql-toolbar,
+.ql-container {
+    border: none !important;
+    background: transparent !important;
+}
+
+.ql-container {
+    font-size: 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#quill-editor {
+    flex: 1;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.ql-editor {
+    background: #1e1e1e !important;
+    /* Match Monaco background exactly */
+    color: #e6e6e6 !important;
+    padding: 16px 20px;
+    line-height: 1.5;
+    border: 1px solid var(--border) !important;
+    border-top: none !important;
+    border-radius: 0 0 8px 8px;
+    outline: none !important;
+    overflow-y: auto !important;
+    /* Allow scrolling when content overflows */
+    margin: 0;
+    min-height: calc(100% - 50px);
+    /* Account for toolbar height */
+    font-size: 16px;
+}
+
+
+
+/* Status styling */
+.status {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: right;
+}
+
+#richStatus {
+    transition: opacity 0.25s;
+}
+
+/* Ensure images display properly in editor */
+.ql-editor img {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    margin: 10px 0 !important;
+    border-radius: 4px;
+}
+
+/* Hide image resize handles that might show as icons */
+.ql-editor .ql-ui {
+    display: none !important;
+}
+
+.ql-toolbar select {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: #e6e6e6;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.18s;
+    cursor: pointer;
+}
+
+.ql-toolbar select:hover {
+    border-color: var(--accent);
+    background: #202433;
+}
+
+.ql-toolbar select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(62, 166, 255, 0.2);
+}
+
+/* Style the toolbar format groups */
+.ql-toolbar .ql-formats {
+    margin-right: 16px;
+    display: flex;
+    gap: 2px;
+    align-items: center;
+}
+
+/* Ensure images display properly in editor */
+.ql-editor img {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    margin: 10px 0 !important;
+    border-radius: 4px;
+}
+
+/* Hide image resize handles that might show as icons */
+.ql-editor .ql-ui {
+    display: none !important;
+}
+
+.ql-snow .ql-tooltip {
+    background: var(--panel) !important;
+    border: 1px solid var(--border) !important;
+    color: #e6e6e6 !important;
+}
+
+.ql-snow .ql-picker-options {
+    background: var(--panel) !important;
+    border: 1px solid var(--border) !important;
+}

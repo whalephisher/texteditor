@@ -7,24 +7,17 @@
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
-    <div
-      class="topbar"
-      style="display: flex; align-items: center; justify-content: space-between"
-    >
-      <a
-        class="link-btn"
-        href="/share"
-        id="toShare"
-        title="Open File Share"
-        style="margin-right: 12px"
-      >
-        <button class="nav-btn">File Share →</button>
-      </a>
-      <a class="link-btn" href="/rich" id="toRich" title="Open Rich Text" style="margin-right: 12px;">
-        <button class="nav-btn">Rich Text →</button>
-      </a>
+    <div class="topbar index-topbar">
+      <div class="nav-left">
+        <a class="link-btn" href="/share" id="toShare" title="Open File Share">
+          <button class="nav-btn">File Share →</button>
+        </a>
+        <a class="link-btn" href="/rich" id="toRich" title="Open Rich Text">
+          <button class="nav-btn">Rich Text →</button>
+        </a>
+      </div>
       <h1 class="page-title">Live Text Editor</h1>
-      <div class="controls" style="margin-left: auto">
+      <div class="nav-right controls">
         <select id="languageSelector">
           <option value="plaintext">Plain Text</option>
           <option value="javascript">JavaScript</option>
@@ -43,22 +36,36 @@
           <option value="sql">SQL</option>
           <option value="yaml">YAML</option>
         </select>
-        <label style="display: flex; align-items: center; gap: 6px">
+        <label class="auto-detect-label">
           <input type="checkbox" id="autoDetectToggle" checked /> Auto-detect
         </label>
       </div>
     </div>
     <script>
-      // Slide left on navigation to share
-      document
-        .getElementById("toShare")
-        .addEventListener("click", function (e) {
-          e.preventDefault();
-          document.body.classList.add("slide-left");
-          setTimeout(() => {
-            window.location.href = this.href;
-          }, 200);
-        });
+      // Navigation handlers
+      document.addEventListener("DOMContentLoaded", () => {
+        // Slide left on navigation to share
+        document
+          .getElementById("toShare")
+          .addEventListener("click", function (e) {
+            e.preventDefault();
+            document.body.classList.add("slide-left");
+            setTimeout(() => {
+              window.location.href = this.href;
+            }, 200);
+          });
+
+        // Slide left on navigation to rich text
+        document
+          .getElementById("toRich")
+          .addEventListener("click", function (e) {
+            e.preventDefault();
+            document.body.classList.add("slide-left");
+            setTimeout(() => {
+              window.location.href = this.href;
+            }, 200);
+          });
+      });
     </script>
 
     <div class="container">
@@ -67,132 +74,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
-    <script>
-      let monacoEditor;
-      let lastSaved = "";
-      let currentFile = { name: "note.txt", content: "" };
-      let autoDetect = true;
-      let langDetectTimeout;
-
-      require.config({
-        paths: {
-          vs: "https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs",
-        },
-      });
-
-      require(["vs/editor/editor.main"], function () {
-        monacoEditor = monaco.editor.create(document.getElementById("editor"), {
-          value: "",
-          language: "javascript",
-          theme: "vs-dark",
-          fontSize: 16,
-          automaticLayout: true,
-          wordWrap: "on",
-        });
-
-        fetch("/load")
-          .then((res) => res.text())
-          .then((text) => {
-            monacoEditor.setValue(text);
-            lastSaved = text;
-            currentFile = { name: "note.txt", content: text };
-            if (autoDetect) applyDetectedLanguage(text);
-          });
-
-        monacoEditor.onDidChangeModelContent(() => {
-          const content = monacoEditor.getValue();
-          if (content !== lastSaved) {
-            lastSaved = content;
-            currentFile.content = content;
-            clearTimeout(window.saveTimeout);
-            window.saveTimeout = setTimeout(() => {
-              fetch("/save", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ content }),
-              })
-                .then((res) => res.text())
-                .then((msg) => {
-                  document.getElementById("status").textContent = msg;
-                  setTimeout(() => {
-                    document.getElementById("status").textContent = "";
-                  }, 1000);
-                });
-            }, 1000);
-          }
-
-          if (autoDetect) {
-            clearTimeout(langDetectTimeout);
-            langDetectTimeout = setTimeout(() => {
-              applyDetectedLanguage(content);
-            }, 300);
-          }
-        });
-
-        const wsProtocol = location.protocol === "https:" ? "wss" : "ws";
-        const wsHost = location.host || `${window.location.hostname}:3000`;
-        const socket = new WebSocket(`${wsProtocol}://${wsHost}`);
-        socket.onmessage = (event) => {
-          if (!monacoEditor.hasTextFocus()) {
-            monacoEditor.setValue(event.data);
-            lastSaved = event.data;
-            currentFile.content = event.data;
-            document.getElementById("status").textContent = "Updated remotely";
-            setTimeout(() => {
-              document.getElementById("status").textContent = "";
-            }, 1000);
-          }
-        };
-
-        document
-          .getElementById("autoDetectToggle")
-          .addEventListener("change", function () {
-            autoDetect = this.checked;
-            if (autoDetect) applyDetectedLanguage(monacoEditor.getValue());
-          });
-
-        document
-          .getElementById("languageSelector")
-          .addEventListener("change", function () {
-            const lang = this.value;
-            if (lang === "auto") {
-              autoDetect = true;
-              document.getElementById("autoDetectToggle").checked = true;
-              applyDetectedLanguage(monacoEditor.getValue());
-            } else {
-              autoDetect = false;
-              document.getElementById("autoDetectToggle").checked = false;
-              monaco.editor.setModelLanguage(monacoEditor.getModel(), lang);
-            }
-          });
-
-        function detectLanguageFromContent(content) {
-          // Heuristics for several languages
-          if (/^\s*#include\s+<.*>|^\s*int\s+main\s*\(|^\s*printf\s*\(/m.test(content)) return 'c';
-          if (/^\s*#include\s+<.*>|std::|::std::|^\s*template\s*</m.test(content)) return 'cpp';
-            // Rust
-          if (/^\s*fn\s+main\s*\(|^\s*use\s+[a-zA-Z0-9_:]+;|Cargo\.toml/m.test(content)) return 'rust';
-          if (/^\s*package\s+|System\.out\.println|public\s+class\s+/m.test(content)) return 'java';
-          if (/^\s*package\s+main|fmt\.Print|go\s+mod\s+/m.test(content)) return 'go';
-          if (/^\s*SELECT\s+|^\s*INSERT\s+|^\s*UPDATE\s+|^\s*DELETE\s+/im.test(content)) return 'sql';
-          if (/^\s*---|: \w+\s*$/m.test(content) && /:\s*\w+/m.test(content)) return 'yaml';
-          if (/^#!\/bin\/(bash|sh)|^\s*echo\s+"|^\s*for\s+\w+\s+in/m.test(content)) return 'shell';
-          if (/^\s*def\s+|import\s+|print\(|:\s*$/m.test(content)) return 'python';
-          if (/^\s*function\s+|=>\s+|const\s+|let\s+|var\s+/m.test(content)) return 'javascript';
-          if (/<[a-z][\s\S]*?>/i.test(content) && /<\/[a-z]+>/i.test(content)) return 'html';
-          if (/{[\s\S]*?:[\s\S]*?}/.test(content) && /^[\[{]/.test(content)) return 'json';
-          if (/^\s*body\s*\{|\s*\.|\s*#/.test(content)) return 'css';
-          if (/^#\s|\*\s|^\s*\d+\.\s/.test(content)) return 'markdown';
-          return 'plaintext';
-        }
-
-        function applyDetectedLanguage(content) {
-          const detectedLang = detectLanguageFromContent(content);
-          monaco.editor.setModelLanguage(monacoEditor.getModel(), detectedLang);
-          // Set dropdown to detected language (not 'auto')
-          document.getElementById("languageSelector").value = detectedLang;
-        }
-      });
-    </script>
+    <script src="/index.js"></script>
   </body>
 </html>

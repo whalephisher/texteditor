@@ -38,5 +38,6 @@ Thumbs.db
 # App data (do not commit uploaded files)
 uploads/
 
-# Personal editor file
+# Personal editor files
 note.txt
+rich.json
