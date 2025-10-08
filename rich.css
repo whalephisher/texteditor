@@ -100,6 +100,29 @@ body {
     font-size: 16px;
 }
 
+/* Monaco-style scrollbar for Quill editor */
+.ql-editor::-webkit-scrollbar {
+    width: 14px;
+}
+
+.ql-editor::-webkit-scrollbar-track {
+    background: #1e1e1e;
+}
+
+.ql-editor::-webkit-scrollbar-thumb {
+    background: #424242;
+    border-radius: 8px;
+    border: 3px solid #1e1e1e;
+}
+
+.ql-editor::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+.ql-editor::-webkit-scrollbar-corner {
+    background: #1e1e1e;
+}
+
 
 
 /* Status styling */

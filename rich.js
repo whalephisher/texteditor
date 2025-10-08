@@ -10,6 +10,38 @@ function initQuill() {
         },
     });
 
+    // Completely override Quill's clipboard for images
+    quill.clipboard.addMatcher('IMG', () => ({ ops: [] })); // Block default image handling
+
+    // Custom paste handler for images only
+    quill.root.addEventListener('paste', (e) => {
+        const clipboardData = e.clipboardData || window.clipboardData;
+        const items = clipboardData.items;
+
+        // Check for image data
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                e.preventDefault();
+                e.stopImmediatePropagation(); // Prevent any other handlers
+
+                const blob = items[i].getAsFile();
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const range = quill.getSelection(true) || { index: quill.getLength() };
+
+                    // Use setTimeout to ensure Quill is ready
+                    setTimeout(() => {
+                        quill.insertEmbed(range.index, 'image', event.target.result);
+                        quill.setSelection(range.index + 1);
+                        setStatus("Image added", false);
+                    }, 10);
+                };
+                reader.readAsDataURL(blob);
+                return;
+            }
+        }
+    }, true); // Use capture phase to intercept early
+
     // Load existing delta
     fetch("/rich-load")
         .then((r) => r.json())
@@ -19,23 +51,19 @@ function initQuill() {
             } catch (e) { }
         });
 
-    // Text change handler with size protection
-    quill.on("text-change", () => {
-        dirty = true;
-        setStatus("Editing...", true);
-        clearTimeout(saveTimeout);
+    // Simplified text change handler - no problematic size limits
+    quill.on("text-change", (delta, oldDelta, source) => {
+        if (source === 'user') {
+            dirty = true;
+            setStatus("Editing...", true);
+            clearTimeout(saveTimeout);
 
-        // Get content and check size
-        const content = quill.getContents();
-        const contentString = JSON.stringify(content);
-
-        // Prevent saving if content is too large (over 1MB)
-        if (contentString.length > 1024 * 1024) {
-            setStatus("Content too large - not saved", true);
-            return;
+            // Simple save with reasonable delay
+            saveTimeout = setTimeout(() => {
+                const content = quill.getContents();
+                save(content, true);
+            }, 1000);
         }
-
-        saveTimeout = setTimeout(() => save(content, true), 800);
     });
 }
 
@@ -50,13 +78,24 @@ function setStatus(msg, persist = false) {
     }
 }
 
-// Save function
+// Save function - fixed to handle large content properly
 function save(delta, broadcast = true) {
     setStatus("Saving...", true);
+
+    const jsonString = JSON.stringify({ delta });
+
+    // Check actual size in MB, not characters
+    const sizeInMB = new Blob([jsonString]).size / (1024 * 1024);
+
+    if (sizeInMB > 50) { // 50MB limit
+        setStatus("Content too large - not saved", true);
+        return;
+    }
+
     fetch("/rich-save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ delta }),
+        body: jsonString,
     })
         .then((r) => r.json())
         .then((ok) => {
