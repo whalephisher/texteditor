@@ -204,6 +204,34 @@ main {
     gap: 10px;
 }
 
+.action-group {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+.action-group button {
+    padding: 10px 16px;
+    border-radius: 999px;
+    letter-spacing: 0.01em;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.action-group button.secondary {
+    background: linear-gradient(145deg, #1a1f2f, #111524);
+    border: 1px solid #2e3544;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+#upload {
+    box-shadow: 0 10px 22px rgba(62, 166, 255, 0.28);
+}
+.action-group button:focus-visible,
+.dropzone:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
 .muted {
     color: var(--muted);
     font-size: 13px;
@@ -211,6 +239,24 @@ main {
 
 .file-list {
     margin-top: 12px;
+}
+
+.bulk-actions {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.bulk-actions .bulk-left {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.bulk-actions .bulk-right {
+    margin-left: auto;
 }
 
 .dropzone {
@@ -227,12 +273,36 @@ main {
     justify-content: center;
     flex-direction: column;
     font-size: 16px;
+    gap: 6px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.18s, transform 0.18s, background 0.18s;
+    background: linear-gradient(150deg, #0f1320, #101626);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
 }
 
 .dropzone.hover {
     border-color: var(--accent);
     color: #dbe6ff;
     background: #11172a;
+    transform: translateY(-2px);
+}
+
+.dropzone:hover {
+    border-color: var(--accent);
+    color: #dbe6ff;
+}
+
+.drop-title {
+    font-weight: 700;
+    font-size: 17px;
+    color: #e7ecf7;
+}
+
+.drop-sub {
+    color: #9bb2d9;
+    font-size: 13px;
 }
 
 .file-item {

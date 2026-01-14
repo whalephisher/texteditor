@@ -61,7 +61,7 @@ function initQuill() {
             // Simple save with reasonable delay
             saveTimeout = setTimeout(() => {
                 const content = quill.getContents();
-                save(content, true);
+                save(content, false); // Don't broadcast on auto-save to prevent loops
             }, 1000);
         }
     });
@@ -79,7 +79,7 @@ function setStatus(msg, persist = false) {
 }
 
 // Save function - fixed to handle large content properly
-function save(delta, broadcast = true) {
+function save(delta, broadcast = false) {
     setStatus("Saving...", true);
 
     const jsonString = JSON.stringify({ delta });
@@ -102,8 +102,9 @@ function save(delta, broadcast = true) {
             if (ok.ok) {
                 dirty = false;
                 setStatus("Synced");
+                // Broadcast full content to other clients
                 if (broadcast && ws && ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({ type: "rich-delta", delta }));
+                    ws.send(JSON.stringify({ type: "rich-content", content: delta }));
                 }
             } else {
                 setStatus("Error");
@@ -128,9 +129,10 @@ function initWebSocket() {
         } catch {
             return;
         }
-        if (data.type === "rich-delta" && data.delta) {
-            quill.updateContents(data.delta);
-            setStatus("Updated");
+        // Receive full content from other clients and replace local content
+        if (data.type === "rich-content" && data.content) {
+            quill.setContents(data.content, 'api'); // Use 'api' source to prevent triggering text-change
+            setStatus("Updated from remote");
         }
     };
 }

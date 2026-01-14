@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 const WebSocket = require('ws');
 const chokidar = require('chokidar');
 const multer = require('multer');
+const archiver = require('archiver');
 
 const app = express();
 const PORT = 3000;
@@ -17,6 +18,27 @@ fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 // Use memory storage so we can write files to nested paths using a provided relative path
 const upload = multer({ storage: multer.memoryStorage() });
+
+async function listUploadedFiles() {
+    const base = path.resolve(UPLOAD_DIR);
+    async function walk(dir, prefix = '') {
+        const out = [];
+        const ents = await fs.promises.readdir(dir, { withFileTypes: true });
+        for (const ent of ents) {
+            const rel = prefix ? path.posix.join(prefix, ent.name) : ent.name;
+            const abs = path.join(dir, ent.name);
+            if (ent.isDirectory()) {
+                out.push(...await walk(abs, rel));
+            } else if (ent.isFile()) {
+                const st = await fs.promises.stat(abs);
+                out.push({ name: rel, size: st.size, mtimeMs: st.mtimeMs });
+            }
+        }
+        return out;
+    }
+    const detailed = await walk(base);
+    return detailed.sort((a, b) => b.mtimeMs - a.mtimeMs);
+}
 
 app.use(bodyParser.urlencoded({ extended: false, limit: '100mb' }));
 app.use(bodyParser.json({ limit: '100mb' }));
@@ -67,26 +89,35 @@ app.post('/rich-save', (req, res) => {
 // List uploaded files
 app.get('/files', async (req, res) => {
     try {
-        const base = path.resolve(UPLOAD_DIR);
-        async function walk(dir, prefix = '') {
-            const out = [];
-            const ents = await fs.promises.readdir(dir, { withFileTypes: true });
-            for (const ent of ents) {
-                const rel = prefix ? path.posix.join(prefix, ent.name) : ent.name;
-                const abs = path.join(dir, ent.name);
-                if (ent.isDirectory()) {
-                    out.push(...await walk(abs, rel));
-                } else if (ent.isFile()) {
-                    const st = await fs.promises.stat(abs);
-                    out.push({ name: rel, size: st.size, mtimeMs: st.mtimeMs });
-                }
-            }
-            return out;
-        }
-        const detailed = await walk(base);
-        res.json(detailed.sort((a, b) => b.mtimeMs - a.mtimeMs));
+        const detailed = await listUploadedFiles();
+        res.json(detailed);
     } catch (e) {
         res.json([]);
+    }
+});
+
+// Download all files as a zip archive
+app.get('/files.zip', async (req, res) => {
+    try {
+        const files = await listUploadedFiles();
+        if (!files.length) return res.status(404).send('No files to download');
+
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', 'attachment; filename=\"files.zip\"');
+
+        const archive = archiver('zip', { zlib: { level: 9 } });
+        archive.on('error', () => {
+            if (!res.headersSent) res.status(500);
+            res.end();
+        });
+        archive.pipe(res);
+        for (const f of files) {
+            const abs = path.resolve(path.join(UPLOAD_DIR, f.name));
+            archive.file(abs, { name: f.name });
+        }
+        archive.finalize();
+    } catch (e) {
+        res.status(500).send('Zip failed');
     }
 });
 
@@ -112,6 +143,17 @@ app.post('/files/upload', upload.array('files'), async (req, res) => {
         res.json({ ok: true, files: saved });
     } catch (e) {
         res.status(500).json({ ok: false, error: 'Upload failed' });
+    }
+});
+
+// Delete all uploaded files
+app.delete('/files', async (req, res) => {
+    try {
+        await fs.promises.rm(UPLOAD_DIR, { recursive: true, force: true });
+        await fs.promises.mkdir(UPLOAD_DIR, { recursive: true });
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: 'Delete failed' });
     }
 });
 
@@ -178,10 +220,15 @@ wss.on('connection', ws => {
         try { data = JSON.parse(msg.toString()); } catch { return; }
         if (!data || typeof data !== 'object') return;
         switch (data.type) {
+            case 'rich-content':
+                // forward full content to others
+                latestRichDelta = data.content || latestRichDelta;
+                wsBroadcast({ type: 'rich-content', content: data.content }, ws);
+                break;
             case 'rich-delta':
-                // forward delta to others
+                // backward compatibility
                 latestRichDelta = data.delta || latestRichDelta;
-                wsBroadcast({ type: 'rich-delta', delta: data.delta }, ws);
+                wsBroadcast({ type: 'rich-content', content: data.delta }, ws);
                 break;
             default:
                 break;

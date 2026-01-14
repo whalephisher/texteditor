@@ -54,12 +54,30 @@
               Drag & drop files or folders below, or use Upload.
             </div>
           </div>
-          <div style="display: flex; gap: 8px; justify-content: flex-end">
+          <div class="action-group">
             <button id="upload">Upload</button>
             <button id="refresh" class="secondary">Refresh</button>
           </div>
         </div>
-        <div id="dropzone" class="dropzone">Drop files or folders here</div>
+        <div
+          id="dropzone"
+          class="dropzone"
+          role="button"
+          tabindex="0"
+          aria-label="Drop files or folders here, or click to upload"
+        >
+          <div class="drop-title">Drop files or folders here</div>
+          <div class="drop-sub">or click to browse</div>
+        </div>
+        <div class="bulk-actions">
+          <div class="bulk-left">
+            <button id="downloadAll" class="secondary">Download all</button>
+            <button id="downloadZip" class="secondary">Download as zip</button>
+          </div>
+          <div class="bulk-right">
+            <button id="deleteAll" class="secondary">Delete all</button>
+          </div>
+        </div>
         <div id="list" class="file-list"></div>
       </section>
     </main>

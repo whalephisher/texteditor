@@ -3,6 +3,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const picker = document.getElementById("picker");
     const uploadBtn = document.getElementById("upload");
     const refreshBtn = document.getElementById("refresh");
+    const downloadAllBtn = document.getElementById("downloadAll");
+    const downloadZipBtn = document.getElementById("downloadZip");
+    const deleteAllBtn = document.getElementById("deleteAll");
     const list = document.getElementById("list");
     const dropzone = document.getElementById("dropzone");
 
@@ -25,6 +28,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Upload functionality
     uploadBtn.addEventListener("click", () => picker.click());
+    dropzone.addEventListener("click", () => picker.click());
+    dropzone.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            picker.click();
+        }
+    });
 
     picker.addEventListener("change", async () => {
         if (!picker.files.length) return; // user canceled
@@ -51,6 +61,89 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     refreshBtn.addEventListener("click", refresh);
+    downloadAllBtn.addEventListener("click", async () => {
+        const prev = downloadAllBtn.textContent;
+        downloadAllBtn.disabled = true;
+        downloadAllBtn.textContent = "Starting…";
+        try {
+            const files = await fetchFilesList();
+            if (!files.length) {
+                alert("No files to download");
+                return;
+            }
+            for (const f of files) {
+                const a = document.createElement("a");
+                a.href = `/files/${encodeURI(f.name)}`;
+                a.download = f.name;
+                a.style.display = "none";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                await new Promise((resolve) => setTimeout(resolve, 200));
+            }
+        } catch (err) {
+            alert("Download failed");
+        } finally {
+            downloadAllBtn.disabled = false;
+            downloadAllBtn.textContent = prev;
+        }
+    });
+
+    downloadZipBtn.addEventListener("click", async () => {
+        const prev = downloadZipBtn.textContent;
+        downloadZipBtn.disabled = true;
+        downloadZipBtn.textContent = "Preparing…";
+        try {
+            const files = await fetchFilesList();
+            if (!files.length) {
+                alert("No files to download");
+                return;
+            }
+            const link = document.createElement("a");
+            link.href = "/files.zip";
+            link.download = "shared-files.zip";
+            link.style.display = "none";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (err) {
+            alert("Zip download failed");
+        } finally {
+            downloadZipBtn.disabled = false;
+            downloadZipBtn.textContent = prev;
+        }
+    });
+
+    let deleteAllConfirmTimeout = null;
+    deleteAllBtn.addEventListener("click", async () => {
+        const isConfirming = deleteAllBtn.dataset.confirming === "true";
+        if (!isConfirming) {
+            deleteAllBtn.dataset.confirming = "true";
+            deleteAllBtn.textContent = "Confirm delete all?";
+            deleteAllBtn.classList.add("danger");
+            deleteAllBtn.classList.remove("secondary");
+            deleteAllConfirmTimeout = setTimeout(() => {
+                resetDeleteAllButton();
+                deleteAllConfirmTimeout = null;
+            }, 4000);
+            return;
+        }
+        deleteAllBtn.disabled = true;
+        deleteAllBtn.textContent = "Deleting…";
+        if (deleteAllConfirmTimeout) {
+            clearTimeout(deleteAllConfirmTimeout);
+            deleteAllConfirmTimeout = null;
+        }
+        try {
+            const res = await fetch("/files", { method: "DELETE" });
+            if (!res.ok) throw new Error("delete failed");
+            await refresh();
+        } catch (err) {
+            alert("Delete all failed");
+        } finally {
+            resetDeleteAllButton();
+        }
+    });
 
     // --- Drag & Drop (supports folders) ---
     ["dragenter", "dragover"].forEach((evt) =>
@@ -155,12 +248,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    async function fetchFilesList() {
+        const res = await fetch("/files");
+        const files = await res.json();
+        if (!Array.isArray(files)) throw new Error("bad response");
+        return files;
+    }
+
+    function resetDeleteAllButton() {
+        if (deleteAllBtn) {
+            deleteAllBtn.dataset.confirming = "false";
+            deleteAllBtn.disabled = false;
+            deleteAllBtn.textContent = "Delete all";
+            deleteAllBtn.classList.remove("danger");
+            if (!deleteAllBtn.classList.contains("secondary")) {
+                deleteAllBtn.classList.add("secondary");
+            }
+        }
+    }
+
     async function refresh() {
         list.textContent = "Loading…";
         try {
-            const res = await fetch("/files");
-            const files = await res.json();
-            if (!Array.isArray(files)) throw new Error("bad response");
+            resetDeleteAllButton();
+            const files = await fetchFilesList();
             list.innerHTML = "";
             if (!files.length) {
                 const div = document.createElement("div");
@@ -243,6 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (!item.contains(evt.target)) revert();
                         };
                         document.addEventListener("click", docHandler, true);
+                        const timeoutId = setTimeout(() => revert(), 4000);
                         del._revert = revert;
                     } else {
                         // Confirmed, do delete
