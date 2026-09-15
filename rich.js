@@ -1,161 +1,61 @@
-// Rich text editor JavaScript
-let quill, statusEl, saveTimeout, dirty = false, ws;
+let quill, richSync;
 
-// Initialize Quill editor
-function initQuill() {
-    quill = new Quill("#quill-editor", {
-        theme: "snow",
-        modules: {
-            toolbar: "#quill-toolbar",
-        },
+document.addEventListener('DOMContentLoaded', () => {
+    const status = document.getElementById('richStatus');
+    const picker = document.createElement('input');
+    picker.type = 'file';
+    picker.accept = 'image/png,image/jpeg,image/gif,image/webp';
+    quill = new Quill('#quill-editor', {
+        theme: 'snow',
+        modules: { toolbar: { container: '#quill-toolbar', handlers: { image: () => picker.click() } } },
     });
-
-    // Completely override Quill's clipboard for images
-    quill.clipboard.addMatcher('IMG', () => ({ ops: [] })); // Block default image handling
-
-    // Custom paste handler for images only
-    quill.root.addEventListener('paste', (e) => {
-        const clipboardData = e.clipboardData || window.clipboardData;
-        const items = clipboardData.items;
-
-        // Check for image data
-        for (let i = 0; i < items.length; i++) {
-            if (items[i].type.indexOf('image') !== -1) {
-                e.preventDefault();
-                e.stopImmediatePropagation(); // Prevent any other handlers
-
-                const blob = items[i].getAsFile();
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const range = quill.getSelection(true) || { index: quill.getLength() };
-
-                    // Use setTimeout to ensure Quill is ready
-                    setTimeout(() => {
-                        quill.insertEmbed(range.index, 'image', event.target.result);
-                        quill.setSelection(range.index + 1);
-                        setStatus("Image added", false);
-                    }, 10);
-                };
-                reader.readAsDataURL(blob);
+    richSync = new DocumentSync('rich', {
+        read: () => quill.getContents(),
+        write: content => {
+            const selection = quill.getSelection();
+            const scroll = quill.root.scrollTop;
+            // Apply a diff so remote changes participate in Quill's undo history.
+            quill.updateContents(quill.getContents().diff(content), 'api');
+            if (selection) {
+                const index = Math.min(selection.index, Math.max(0, quill.getLength() - 1));
+                quill.setSelection(index, Math.min(selection.length, quill.getLength() - 1 - index), 'silent');
+            }
+            quill.root.scrollTop = scroll;
+        },
+        editable: enabled => quill.enable(enabled),
+    }, status);
+    quill.on('text-change', () => richSync.changed());
+    let uploading = false;
+    window.addEventListener('beforeunload', event => {
+        if (uploading) { event.preventDefault(); event.returnValue = ''; }
+    });
+    async function insertImage(file) {
+        if (!file || !richSync.ready || uploading) return;
+        if (file.size > 10 * 1024 * 1024) { status.textContent = 'Images must be 10 MB or smaller'; return; }
+        uploading = true;
+        status.textContent = 'Uploading image…';
+        const data = new FormData();
+        data.append('image', file);
+        try {
+            const response = await fetch('/images', { method: 'POST', body: data });
+            if (!response.ok) throw new Error('Upload failed');
+            const { url } = await response.json();
+            const range = quill.getSelection(true) || { index: Math.max(0, quill.getLength() - 1) };
+            quill.insertEmbed(range.index, 'image', url, 'user');
+            quill.setSelection(range.index + 1, 0, 'silent');
+        } catch { status.textContent = 'Image upload failed — try again'; }
+        finally { uploading = false; picker.value = ''; }
+    }
+    picker.onchange = () => insertImage(picker.files[0]);
+    quill.root.addEventListener('paste', event => {
+        const items = event.clipboardData?.items || [];
+        for (const item of items) {
+            if (item.type.startsWith('image/')) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                insertImage(item.getAsFile());
                 return;
             }
         }
-    }, true); // Use capture phase to intercept early
-
-    // Load existing delta
-    fetch("/rich-load")
-        .then((r) => r.json())
-        .then((d) => {
-            try {
-                quill.setContents(d);
-            } catch (e) { }
-        });
-
-    // Simplified text change handler - no problematic size limits
-    quill.on("text-change", (delta, oldDelta, source) => {
-        if (source === 'user') {
-            dirty = true;
-            setStatus("Editing...", true);
-            clearTimeout(saveTimeout);
-
-            // Simple save with reasonable delay
-            saveTimeout = setTimeout(() => {
-                const content = quill.getContents();
-                save(content, false); // Don't broadcast on auto-save to prevent loops
-            }, 1000);
-        }
-    });
-}
-
-// Status management
-function setStatus(msg, persist = false) {
-    statusEl.textContent = msg;
-    if (!persist) {
-        clearTimeout(setStatus._t);
-        setStatus._t = setTimeout(() => {
-            if (!dirty) statusEl.textContent = "";
-        }, 1200);
-    }
-}
-
-// Save function - fixed to handle large content properly
-function save(delta, broadcast = false) {
-    setStatus("Saving...", true);
-
-    const jsonString = JSON.stringify({ delta });
-
-    // Check actual size in MB, not characters
-    const sizeInMB = new Blob([jsonString]).size / (1024 * 1024);
-
-    if (sizeInMB > 50) { // 50MB limit
-        setStatus("Content too large - not saved", true);
-        return;
-    }
-
-    fetch("/rich-save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: jsonString,
-    })
-        .then((r) => r.json())
-        .then((ok) => {
-            if (ok.ok) {
-                dirty = false;
-                setStatus("Synced");
-                // Broadcast full content to other clients
-                if (broadcast && ws && ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({ type: "rich-content", content: delta }));
-                }
-            } else {
-                setStatus("Error");
-            }
-        })
-        .catch(() => {
-            setStatus("Error");
-        });
-}
-
-// WebSocket initialization
-function initWebSocket() {
-    const proto = location.protocol === "https:" ? "wss" : "ws";
-    ws = new WebSocket(
-        proto + "://" + (location.host || window.location.hostname + ":3000")
-    );
-
-    ws.onmessage = (ev) => {
-        let data;
-        try {
-            data = JSON.parse(ev.data);
-        } catch {
-            return;
-        }
-        // Receive full content from other clients and replace local content
-        if (data.type === "rich-content" && data.content) {
-            quill.setContents(data.content, 'api'); // Use 'api' source to prevent triggering text-change
-            setStatus("Updated from remote");
-        }
-    };
-}
-
-// Navigation handlers
-function initNavigation() {
-    document.getElementById("toEditor").addEventListener("click", function (e) {
-        e.preventDefault();
-        document.body.classList.add("slide-right");
-        setTimeout(() => (window.location.href = this.href), 200);
-    });
-
-    document.getElementById("toShare").addEventListener("click", function (e) {
-        e.preventDefault();
-        document.body.classList.add("slide-left");
-        setTimeout(() => (window.location.href = this.href), 200);
-    });
-}
-
-// Initialize everything when DOM is ready
-document.addEventListener("DOMContentLoaded", () => {
-    statusEl = document.getElementById("richStatus");
-    initQuill();
-    initWebSocket();
-    initNavigation();
+    }, true);
 });

@@ -1,187 +1,61 @@
-// Monaco editor JavaScript functionality
 let monacoEditor;
-let lastSaved = "";
-let currentFile = { name: "note.txt", content: "" };
+let sync;
 let autoDetect = true;
 let langDetectTimeout;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Navigation handlers
-    document.getElementById('toShare').addEventListener('click', function (e) {
-        e.preventDefault();
-        document.body.classList.add('slide-left');
-        setTimeout(() => {
-            window.location.href = this.href;
-        }, 200);
-    });
-
-    document.getElementById('toRich').addEventListener('click', function (e) {
-        e.preventDefault();
-        document.body.classList.add('slide-left');
-        setTimeout(() => {
-            window.location.href = this.href;
-        }, 200);
-    });
-
-    // Initialize Monaco Editor
-    require.config({
-        paths: {
-            vs: "https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs",
-        },
-    });
-
-    require(["vs/editor/editor.main"], function () {
-        monacoEditor = monaco.editor.create(document.getElementById("editor"), {
-            value: "",
-            language: "javascript",
-            theme: "vs-dark",
-            fontSize: 16,
-            automaticLayout: true,
-            wordWrap: "on",
+    require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs' } });
+    require(['vs/editor/editor.main'], () => {
+        let preference = 'auto';
+        try { preference = localStorage.getItem('editor-language') || 'auto'; } catch {}
+        autoDetect = preference === 'auto';
+        document.getElementById('autoDetectToggle').checked = autoDetect;
+        monacoEditor = monaco.editor.create(document.getElementById('editor'), {
+            value: '', language: autoDetect ? 'plaintext' : preference,
+            theme: 'vs-dark', fontSize: 16, automaticLayout: true, wordWrap: 'on', readOnly: true,
         });
-
-        fetch("/load")
-            .then((res) => res.text())
-            .then((text) => {
-                monacoEditor.setValue(text);
-                lastSaved = text;
-                currentFile = { name: "note.txt", content: text };
-                if (autoDetect) applyDetectedLanguage(text);
-            });
-
+        if (!autoDetect) document.getElementById('languageSelector').value = preference;
+        sync = new DocumentSync('code', {
+            read: () => monacoEditor.getValue(),
+            write: text => {
+                if (monacoEditor.getValue() === text) return;
+                const view = monacoEditor.saveViewState();
+                // An undoable edit preserves undo history and the viewport.
+                monacoEditor.pushUndoStop();
+                monacoEditor.executeEdits('remote', [{ range: monacoEditor.getModel().getFullModelRange(), text }]);
+                monacoEditor.pushUndoStop();
+                monacoEditor.restoreViewState(view);
+                detect();
+            },
+            editable: enabled => monacoEditor.updateOptions({ readOnly: !enabled }),
+        }, document.getElementById('status'));
         monacoEditor.onDidChangeModelContent(() => {
-            const content = monacoEditor.getValue();
-            if (content !== lastSaved) {
-                lastSaved = content;
-                currentFile.content = content;
-                clearTimeout(window.saveTimeout);
-                window.saveTimeout = setTimeout(() => {
-                    fetch("/save", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ content }),
-                    })
-                        .then((res) => res.text())
-                        .then((msg) => {
-                            document.getElementById("status").textContent = msg;
-                            setTimeout(() => {
-                                document.getElementById("status").textContent = "";
-                            }, 1000);
-                        });
-                }, 1000);
-            }
-
-            if (autoDetect) {
-                clearTimeout(langDetectTimeout);
-                langDetectTimeout = setTimeout(() => {
-                    applyDetectedLanguage(content);
-                }, 300);
-            }
+            sync.changed();
+            clearTimeout(langDetectTimeout);
+            if (autoDetect) langDetectTimeout = setTimeout(detect, 500);
         });
-
-        const wsProtocol = location.protocol === "https:" ? "wss" : "ws";
-        const wsHost = location.host || `${window.location.hostname}:3000`;
-        const socket = new WebSocket(`${wsProtocol}://${wsHost}`);
-        socket.onmessage = (event) => {
-            let payload;
-            try {
-                payload = JSON.parse(event.data);
-            } catch {
-                return;
-            }
-            if (payload.type === "code") {
-                if (!monacoEditor.hasTextFocus()) {
-                    monacoEditor.setValue(payload.content || "");
-                    lastSaved = payload.content || "";
-                    currentFile.content = payload.content || "";
-                    document.getElementById("status").textContent =
-                        "Updated remotely";
-                    setTimeout(() => {
-                        document.getElementById("status").textContent = "";
-                    }, 1000);
-                }
-            }
+        function detect() {
+            if (!autoDetect) return;
+            const model = monacoEditor.getModel();
+            const end = model.getPositionAt(Math.min(model.getValueLength(), 12000));
+            const sample = model.getValueInRange({ startLineNumber: 1, startColumn: 1, endLineNumber: end.lineNumber, endColumn: end.column });
+            const language = detectLanguageFromContent(sample);
+            if (model.getLanguageId() !== language) monaco.editor.setModelLanguage(model, language);
+            document.getElementById('languageSelector').value = language;
+        }
+        function remember() {
+            try { localStorage.setItem('editor-language', autoDetect ? 'auto' : document.getElementById('languageSelector').value); } catch {}
+        }
+        document.getElementById('autoDetectToggle').onchange = event => {
+            autoDetect = event.target.checked;
+            detect();
+            remember();
         };
-
-        document
-            .getElementById("autoDetectToggle")
-            .addEventListener("change", function () {
-                autoDetect = this.checked;
-                if (autoDetect) applyDetectedLanguage(monacoEditor.getValue());
-            });
-
-        document
-            .getElementById("languageSelector")
-            .addEventListener("change", function () {
-                const lang = this.value;
-                if (lang === "auto") {
-                    autoDetect = true;
-                    document.getElementById("autoDetectToggle").checked = true;
-                    applyDetectedLanguage(monacoEditor.getValue());
-                } else {
-                    autoDetect = false;
-                    document.getElementById("autoDetectToggle").checked = false;
-                    monaco.editor.setModelLanguage(monacoEditor.getModel(), lang);
-                }
-            });
+        document.getElementById('languageSelector').onchange = event => {
+            autoDetect = false;
+            document.getElementById('autoDetectToggle').checked = false;
+            monaco.editor.setModelLanguage(monacoEditor.getModel(), event.target.value);
+            remember();
+        };
     });
 });
-
-function detectLanguageFromContent(content) {
-    // Heuristics for several languages
-    if (
-        /^\s*#include\s+<.*>|^\s*int\s+main\s*\(|^\s*printf\s*\(/m.test(
-            content
-        )
-    )
-        return "c";
-    if (
-        /^\s*#include\s+<.*>|std::|::std::|^\s*template\s*</m.test(content)
-    )
-        return "cpp";
-    // Rust
-    if (
-        /^\s*fn\s+main\s*\(|^\s*use\s+[a-zA-Z0-9_:]+;|Cargo\.toml/m.test(
-            content
-        )
-    )
-        return "rust";
-    if (
-        /^\s*package\s+|System\.out\.println|public\s+class\s+/m.test(
-            content
-        )
-    )
-        return "java";
-    if (/^\s*package\s+main|fmt\.Print|go\s+mod\s+/m.test(content))
-        return "go";
-    if (
-        /^\s*SELECT\s+|^\s*INSERT\s+|^\s*UPDATE\s+|^\s*DELETE\s+/im.test(
-            content
-        )
-    )
-        return "sql";
-    if (/^\s*---|: \w+\s*$/m.test(content) && /:\s*\w+/m.test(content))
-        return "yaml";
-    if (
-        /^#!\/bin\/(bash|sh)|^\s*echo\s+"|^\s*for\s+\w+\s+in/m.test(content)
-    )
-        return "shell";
-    if (/^\s*def\s+|import\s+|print\(|:\s*$/m.test(content))
-        return "python";
-    if (/^\s*function\s+|=>\s+|const\s+|let\s+|var\s+/m.test(content))
-        return "javascript";
-    if (/<[a-z][\s\S]*?>/i.test(content) && /<\/[a-z]+>/i.test(content))
-        return "html";
-    if (/{[\s\S]*?:[\s\S]*?}/.test(content) && /^[\[{]/.test(content))
-        return "json";
-    if (/^\s*body\s*\{|\s*\.|\s*#/.test(content)) return "css";
-    if (/^#\s|\*\s|^\s*\d+\.\s/.test(content)) return "markdown";
-    return "plaintext";
-}
-
-function applyDetectedLanguage(content) {
-    const detectedLang = detectLanguageFromContent(content);
-    monaco.editor.setModelLanguage(monacoEditor.getModel(), detectedLang);
-    // Set dropdown to detected language (not 'auto')
-    document.getElementById("languageSelector").value = detectedLang;
-}

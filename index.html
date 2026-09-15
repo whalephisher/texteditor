@@ -41,39 +41,21 @@
         </label>
       </div>
     </div>
-    <script>
-      // Navigation handlers
-      document.addEventListener("DOMContentLoaded", () => {
-        // Slide left on navigation to share
-        document
-          .getElementById("toShare")
-          .addEventListener("click", function (e) {
-            e.preventDefault();
-            document.body.classList.add("slide-left");
-            setTimeout(() => {
-              window.location.href = this.href;
-            }, 200);
-          });
 
-        // Slide left on navigation to rich text
-        document
-          .getElementById("toRich")
-          .addEventListener("click", function (e) {
-            e.preventDefault();
-            document.body.classList.add("slide-left");
-            setTimeout(() => {
-              window.location.href = this.href;
-            }, 200);
-          });
-      });
-    </script>
 
     <div class="container">
       <div id="editor"></div>
-      <div><span id="status"></span></div>
+      <div><span id="status" role="status" aria-live="polite"></span></div>
     </div>
 
+    <div id="conflict" class="conflict" role="alert" hidden>
+      Another tab or device saved different changes. Choose which version to keep.
+      <button id="useRemote" type="button">Use saved version</button>
+      <button id="keepLocal" type="button">Save my version</button>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
+    <script src="/sync.js"></script>
+    <script src="/language.js"></script>
     <script src="/index.js"></script>
   </body>
 </html>

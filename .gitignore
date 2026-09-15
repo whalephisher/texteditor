@@ -41,3 +41,6 @@ uploads/
 # Personal editor files
 note.txt
 rich.json
+
+# Uploaded rich-text images
+images/

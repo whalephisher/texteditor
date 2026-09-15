@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Rich Editor</title>
     <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="/rich.css" />
@@ -22,7 +23,7 @@
       </div>
       <h1 class="page-title">Rich Text</h1>
       <div class="nav-right">
-        <span id="richStatus" class="status"></span>
+        <span id="richStatus" class="status" role="status" aria-live="polite"></span>
       </div>
     </div>
     <div class="rich-wrapper">
@@ -56,7 +57,13 @@
       </div>
       <div id="quill-editor"></div>
     </div>
+    <div id="conflict" class="conflict" role="alert" hidden>
+      Another tab or device saved different changes. Choose which version to keep.
+      <button id="useRemote" type="button">Use saved version</button>
+      <button id="keepLocal" type="button">Save my version</button>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+    <script src="/sync.js"></script>
     <script src="/rich.js"></script>
   </body>
 </html>

@@ -6,9 +6,10 @@ const WebSocket = require('ws');
 const chokidar = require('chokidar');
 const multer = require('multer');
 const archiver = require('archiver');
+const { createDocumentStore } = require('./document-store');
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT || 3000);
 const FILE_PATH = path.join(__dirname, 'note.txt');
 const RICH_PATH = path.join(__dirname, 'rich.json');
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
@@ -16,8 +17,12 @@ const UPLOAD_DIR = path.join(__dirname, 'uploads');
 // Ensure upload directory exists
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-// Use memory storage so we can write files to nested paths using a provided relative path
-const upload = multer({ storage: multer.memoryStorage() });
+// Stage uploads on disk instead of retaining the entire request in memory.
+const os = require('os');
+const upload = multer({
+    dest: os.tmpdir(),
+    limits: { fileSize: 50 * 1024 * 1024, files: 100, fields: 100, fieldSize: 4096 },
+});
 
 async function listUploadedFiles() {
     const base = path.resolve(UPLOAD_DIR);
@@ -40,9 +45,11 @@ async function listUploadedFiles() {
     return detailed.sort((a, b) => b.mtimeMs - a.mtimeMs);
 }
 
-app.use(bodyParser.urlencoded({ extended: false, limit: '100mb' }));
-app.use(bodyParser.json({ limit: '100mb' }));
-app.use(express.static(__dirname));
+app.use(bodyParser.json({ limit: '60mb' }));
+// Only these browser assets are public; source, notes and dependencies are not.
+for (const asset of ['index.js', 'rich.js', 'share.js', 'sync.js', 'language.js', 'style.css', 'rich.css']) {
+    app.get('/' + asset, (req, res) => res.sendFile(path.join(__dirname, asset)));
+}
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
@@ -56,34 +63,62 @@ app.get('/rich', (req, res) => {
     res.sendFile(path.join(__dirname, 'rich.html'));
 });
 
-app.get('/load', (req, res) => {
-    fs.readFile(FILE_PATH, 'utf8', (err, data) => {
-        if (err) return res.send('');
-        res.send(data);
-    });
+const documents = createDocumentStore({
+    code: { path: FILE_PATH },
+    rich: { path: RICH_PATH, rich: true },
+}, (document, revision) => wsBroadcast({ type: 'document-changed', document, revision }));
+
+app.get('/api/documents/:id', async (req, res) => {
+    if (!['code', 'rich'].includes(req.params.id)) return res.sendStatus(404);
+    res.set('Cache-Control', 'no-store');
+    try { res.json(await documents.read(req.params.id)); }
+    catch { res.status(500).json({ error: 'Could not load document' }); }
 });
 
-// Load rich text delta (Quill)
-app.get('/rich-load', (req, res) => {
-    fs.readFile(RICH_PATH, 'utf8', (err, data) => {
-        if (err) return res.json({ ops: [] });
-        try {
-            const parsed = JSON.parse(data);
-            return res.json(parsed);
-        } catch {
-            return res.json({ ops: [] });
-        }
-    });
+app.put('/api/documents/:id', async (req, res) => {
+    const id = req.params.id;
+    if (!['code', 'rich'].includes(id)) return res.sendStatus(404);
+    const { content, revision } = req.body || {};
+    const valid = id === 'code' ? typeof content === 'string' :
+        content && Array.isArray(content.ops) && content.ops.every(op =>
+            op && (typeof op.insert === 'string' ||
+                (op.insert && typeof op.insert === 'object' && !Array.isArray(op.insert))));
+    if (!valid || typeof revision !== 'string') return res.status(400).json({ error: 'Invalid document or revision' });
+    try {
+        const result = await documents.save(id, content, revision);
+        res.status(result.conflict ? 409 : 200).json(result.conflict ? result : { revision: result.revision });
+    } catch { res.status(500).json({ error: 'Could not save document' }); }
 });
 
-// Save rich text delta
-app.post('/rich-save', (req, res) => {
-    const delta = req.body && req.body.delta;
-    if (!delta || typeof delta !== 'object') return res.status(400).json({ ok: false, error: 'Invalid delta' });
-    fs.promises.writeFile(RICH_PATH, JSON.stringify(delta)).then(() => {
-        res.json({ ok: true });
-    }).catch(() => res.status(500).json({ ok: false }));
+// Store rich-text images separately from shared files and document JSON.
+const IMAGE_DIR = path.join(__dirname, 'images');
+fs.mkdirSync(IMAGE_DIR, { recursive: true });
+const imageUpload = multer({ dest: os.tmpdir(), limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
+app.post('/images', (req, res, next) => {
+    imageUpload.single('image')(req, res, error => {
+        if (error) return res.status(400).json({ error: error.message });
+        next();
+    });
+}, async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'Image required' });
+    try {
+        const handle = await fs.promises.open(req.file.path, 'r');
+        const header = Buffer.alloc(12);
+        try { await handle.read(header, 0, 12, 0); } finally { await handle.close(); }
+        const signature = header.toString('hex');
+        let extension;
+        if (signature.startsWith('89504e470d0a1a0a')) extension = 'png';
+        else if (signature.startsWith('ffd8ff')) extension = 'jpg';
+        else if (/^GIF8[79]a/.test(header.toString('ascii'))) extension = 'gif';
+        else if (header.toString('ascii', 0, 4) === 'RIFF' && header.toString('ascii', 8, 12) === 'WEBP') extension = 'webp';
+        if (!extension) return res.status(400).json({ error: 'Use a PNG, JPEG, GIF or WebP image' });
+        const name = require('crypto').randomUUID() + '.' + extension;
+        await fs.promises.copyFile(req.file.path, path.join(IMAGE_DIR, name));
+        res.json({ url: '/images/' + name });
+    } catch { res.status(500).json({ error: 'Image upload failed' }); }
+    finally { await fs.promises.rm(req.file.path, { force: true }).catch(() => {}); }
 });
+app.use('/images', express.static(IMAGE_DIR, { dotfiles: 'deny', setHeaders: res => res.set('X-Content-Type-Options', 'nosniff') }));
 
 // Simple file sharing API (separate from editor)
 // List uploaded files
@@ -122,7 +157,12 @@ app.get('/files.zip', async (req, res) => {
 });
 
 // Upload one or more files
-app.post('/files/upload', upload.array('files'), async (req, res) => {
+app.post('/files/upload', (req, res, next) => {
+    upload.array('files')(req, res, error => {
+        if (error) return res.status(400).json({ ok: false, error: error.message });
+        next();
+    });
+}, async (req, res) => {
     try {
         const files = req.files || [];
         let paths = req.body.paths || [];
@@ -137,12 +177,14 @@ app.post('/files/upload', upload.array('files'), async (req, res) => {
             const targetPath = path.resolve(path.join(UPLOAD_DIR, relClean));
             if (!targetPath.startsWith(base)) throw new Error('Invalid path');
             await fs.promises.mkdir(path.dirname(targetPath), { recursive: true });
-            await fs.promises.writeFile(targetPath, f.buffer);
+            await fs.promises.copyFile(f.path, targetPath);
             saved.push(relClean);
         }
         res.json({ ok: true, files: saved });
     } catch (e) {
         res.status(500).json({ ok: false, error: 'Upload failed' });
+    } finally {
+        await Promise.all((req.files || []).map(f => fs.promises.rm(f.path, { force: true }).catch(() => {})));
     }
 });
 
@@ -194,46 +236,17 @@ function wsBroadcast(obj, except) {
     });
 }
 
-app.post('/save', async (req, res) => {
-    const content = req.body.content;
-    try {
-        await fs.promises.writeFile(FILE_PATH, content);
-        res.send('Saved');
-        wsBroadcast({ type: 'code', content }); // Immediately notify all clients
-    } catch (err) {
-        res.status(500).send('Error saving file');
-    }
-});
-
 // Allow access from other devices
-const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Editor running at http://0.0.0.0:${PORT}`);
+const HOST = process.env.HOST || '0.0.0.0';
+const server = app.listen(PORT, HOST, error => {
+    if (error) { console.error(error); process.exit(1); }
+    console.log(`Editor running at http://0.0.0.0:${server.address().port}`);
 });
 
 const wss = new WebSocket.Server({ server });
-let latestRichDelta = null; // cached last delta for new rich clients (loaded separately via HTTP too)
 wss.on('connection', ws => {
     ws.isAlive = true;
     ws.on('pong', () => { ws.isAlive = true; });
-    ws.on('message', msg => {
-        let data;
-        try { data = JSON.parse(msg.toString()); } catch { return; }
-        if (!data || typeof data !== 'object') return;
-        switch (data.type) {
-            case 'rich-content':
-                // forward full content to others
-                latestRichDelta = data.content || latestRichDelta;
-                wsBroadcast({ type: 'rich-content', content: data.content }, ws);
-                break;
-            case 'rich-delta':
-                // backward compatibility
-                latestRichDelta = data.delta || latestRichDelta;
-                wsBroadcast({ type: 'rich-content', content: data.delta }, ws);
-                break;
-            default:
-                break;
-        }
-    });
 });
 
 // Heartbeat (optional resilience)
@@ -244,11 +257,12 @@ setInterval(() => {
     });
 }, 30000);
 
-// Watch for external file changes (like from editing outside app)
-chokidar.watch(FILE_PATH).on('change', () => {
-    fs.readFile(FILE_PATH, 'utf8', (err, data) => {
-        if (!err) {
-            wsBroadcast({ type: 'code', content: data });
-        }
+// Invalidate clients for external edits too. Revision checks suppress duplicate updates.
+chokidar.watch([FILE_PATH, RICH_PATH], { ignoreInitial: true, awaitWriteFinish: { stabilityThreshold: 200, pollInterval: 50 } })
+    .on('all', (event, filename) => {
+        if (!['add', 'change', 'unlink'].includes(event)) return;
+        const document = filename === RICH_PATH ? 'rich' : 'code';
+        documents.read(document).then(result => {
+            wsBroadcast({ type: 'document-changed', document, revision: result.revision });
+        }).catch(() => {});
     });
-});
