@@ -15,14 +15,25 @@ document.addEventListener('DOMContentLoaded', () => {
             theme: 'vs-dark', fontSize: 16, automaticLayout: true, wordWrap: 'on', readOnly: true,
         });
         if (!autoDetect) document.getElementById('languageSelector').value = preference;
+        let loaded = false;
         sync = new DocumentSync('code', {
             read: () => monacoEditor.getValue(),
             write: text => {
-                if (monacoEditor.getValue() === text) return;
+                const model = monacoEditor.getModel();
+                // Loading must work while the UI is read-only. executeEdits refuses
+                // edits in that state, silently leaving a saved document blank.
+                // Initial content also must not create an undo step back to empty.
+                if (!loaded) {
+                    model.setValue(text);
+                    loaded = true;
+                    detect();
+                    return;
+                }
+                if (model.getValue() === text) return;
                 const view = monacoEditor.saveViewState();
                 // An undoable edit preserves undo history and the viewport.
                 monacoEditor.pushUndoStop();
-                monacoEditor.executeEdits('remote', [{ range: monacoEditor.getModel().getFullModelRange(), text }]);
+                model.pushEditOperations(monacoEditor.getSelections(), [{ range: model.getFullModelRange(), text }], () => null);
                 monacoEditor.pushUndoStop();
                 monacoEditor.restoreViewState(view);
                 detect();

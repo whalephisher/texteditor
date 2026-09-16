@@ -9,13 +9,21 @@ document.addEventListener('DOMContentLoaded', () => {
         theme: 'snow',
         modules: { toolbar: { container: '#quill-toolbar', handlers: { image: () => picker.click() } } },
     });
+    const Delta = Quill.import('delta');
+    let loaded = false;
     richSync = new DocumentSync('rich', {
         read: () => quill.getContents(),
         write: content => {
+            if (!loaded) {
+                quill.setContents(content, 'api');
+                quill.history.clear();
+                loaded = true;
+                return;
+            }
             const selection = quill.getSelection();
             const scroll = quill.root.scrollTop;
             // Apply a diff so remote changes participate in Quill's undo history.
-            quill.updateContents(quill.getContents().diff(content), 'api');
+            quill.updateContents(quill.getContents().diff(new Delta(content)), 'api');
             if (selection) {
                 const index = Math.min(selection.index, Math.max(0, quill.getLength() - 1));
                 quill.setSelection(index, Math.min(selection.length, quill.getLength() - 1 - index), 'silent');

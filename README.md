@@ -74,4 +74,6 @@ git push -u origin main
 
 Run `npm test` for save/recovery, revision conflicts, WebSocket notifications, language detection, uploads, and public-file boundaries. Server tests use isolated temporary files and a temporary localhost port.
 
+Run `npm run test:browser` to check actual Monaco and Quill loading, saving, reloading, and synchronization across tabs in headless Chrome. This uses temporary documents and a separate browser profile. Chrome defaults to its macOS application path; set `CHROME_PATH` on other systems. The test needs access to the editor libraries on jsDelivr.
+
 Set `PORT` to change the default port (3000), or `HOST` to change the bind address (default `0.0.0.0`). Restart the server and refresh existing tabs after upgrading: both editors now use the revision-aware `/api/documents/code` and `/api/documents/rich` endpoints.
