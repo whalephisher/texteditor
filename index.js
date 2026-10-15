@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
         monacoEditor = monaco.editor.create(document.getElementById('editor'), {
             value: '', language: autoDetect ? 'plaintext' : preference,
             theme: 'vs-dark', fontSize: 16, automaticLayout: true, wordWrap: 'on', readOnly: true,
+            // Ordinary Unicode punctuation and symbols are expected in shared notes.
+            unicodeHighlight: { ambiguousCharacters: false, nonBasicASCII: false },
         });
         if (!autoDetect) document.getElementById('languageSelector').value = preference;
         let loaded = false;

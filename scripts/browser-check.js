@@ -85,16 +85,24 @@ async function main() {
     assert.equal(await evaluate(code, 'monacoEditor.getValue()'), 'Existing saved text', 'Initial load must display the saved document');
     assert.equal(await evaluate(code, 'monacoEditor.getModel().canUndo()'), false, 'Initial load must not undo back to empty');
     console.log('PASS: real Monaco loads saved text while initially read-only, without an empty undo step');
-    await evaluate(code, 'monacoEditor.setValue("Saved from browser"); sync.save()');
+    const unicodeNote = '2 × 6 min steady (~9:20–9:40) with 2–3 min easy; finish with 4–6 × 20 sec strides.';
+    await evaluate(code, `monacoEditor.setValue(${JSON.stringify(unicodeNote)}); sync.save()`);
     await until(code, '!sync.dirty && !sync.saving');
+    // Unicode decorations are computed asynchronously after content changes.
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    assert.equal(await evaluate(code, 'document.querySelectorAll(".view-lines .unicode-highlight").length'), 0,
+        'Visible Unicode punctuation and symbols must not get warning boxes');
     await evaluate(code, 'window.__beforeReload = true');
     await command('Page.reload', {}, code);
     await until(code, '!window.__beforeReload && typeof sync !== "undefined" && sync && sync.ready');
-    assert.equal(await evaluate(code, 'monacoEditor.getValue()'), 'Saved from browser');
-    console.log('PASS: code edits survive save and reload');
+    assert.equal(await evaluate(code, 'monacoEditor.getValue()'), unicodeNote);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    assert.equal(await evaluate(code, 'document.querySelectorAll(".view-lines .unicode-highlight").length'), 0,
+        'Unicode warning boxes must stay absent after reload');
+    console.log('PASS: Unicode text survives save and reload without warning boxes');
     const second = await tab(base);
     await until(second, 'typeof sync !== "undefined" && sync && sync.ready');
-    assert.equal(await evaluate(second, 'monacoEditor.getValue()'), 'Saved from browser');
+    assert.equal(await evaluate(second, 'monacoEditor.getValue()'), unicodeNote);
     await evaluate(code, 'monacoEditor.setValue("Updated from first tab"); sync.save()');
     await until(second, 'monacoEditor.getValue() === "Updated from first tab"');
     console.log('PASS: clean second tab receives saved edits');
